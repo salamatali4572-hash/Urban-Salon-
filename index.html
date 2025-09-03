@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ur">
+<head>
+<meta charset="UTF-8">
+<title>Urban Punjabi Hair Saloon</title>
+<style>
+body { font-family: Arial; background:#f0f0f0; text-align:center; margin:0; padding:0;}
+.container-box { max-width:400px; margin:50px auto; background:white; padding:20px; border-radius:10px; box-shadow:0 0 10px gray;}
+input, select { display:block; margin:10px auto; padding:10px; width:90%; border:1px solid gray; border-radius:5px;}
+button { margin:10px; padding:10px 20px; border:none; border-radius:5px; cursor:pointer; color:white;}
+.register-btn{background:blue;}
+.login-btn{background:green;}
+.logout{background:red;}
+header{background:#222; color:white; padding:20px; font-size:20px;}
+.card{background:white; border-radius:10px; padding:15px; margin:10px auto; box-shadow:0 0 10px rgba(0,0,0,0.1);}
+.link-btn{background:gray; color:white;}
+.total-box{background:#e3ffe3; padding:10px; margin:10px auto; border-radius:10px;}
+#liveTotal{font-weight:bold; color:darkgreen; margin-top:10px;}
+</style>
+</head>
+<body>
+
+<!-- Register Page -->
+<div id="registerPage" class="container-box">
+  <h2>Urban Punjabi Hair Saloon</h2>
+  <h3>Register</h3>
+  <input type="text" id="regUser" placeholder="Choose User Name">
+  <input type="password" id="regPass" placeholder="Choose Password">
+  <button class="register-btn" onclick="register()">Register</button>
+  <p>Already registered? <button class="link-btn" onclick="showLogin()">Login</button></p>
+  <p id="regMsg" style="color:red;"></p>
+</div>
+
+<!-- Login Page -->
+<div id="loginPage" class="container-box" style="display:none;">
+  <h2>Urban Punjabi Hair Saloon</h2>
+  <h3>Login</h3>
+  <input type="text" id="loginUser" placeholder="User Name">
+  <input type="password" id="loginPass" placeholder="Password">
+  <button class="login-btn" onclick="login()">Login</button>
+  <p>Not registered? <button class="link-btn" onclick="showRegister()">Register</button></p>
+  <p id="loginMsg" style="color:red;"></p>
+</div>
+
+<!-- Dashboard -->
+<div id="mainApp" style="display:none;">
+  <header>🎉 Welcome to Urban Punjabi Hair Saloon 🎉</header>
+
+  <div class="total-box">
+    <h3>💰 Aaj ki Collection: Rs.<span id="todayTotal">0</span></h3>
+  </div>
+
+  <div class="container-box">
+    <div class="card">
+      <h2>Customer Profile</h2>
+      <input type="text" id="cname" placeholder="Customer Name">
+      <input type="text" id="cphone" placeholder="Phone Number (e.g., 92316xxxxxxx)">
+      
+      <h3>Select Services</h3>
+      <label><input type="checkbox" class="service" value="Hair Cut - 120"> Hair Cut - 120</label>
+      <label><input type="checkbox" class="service" value="Beard Style - 100"> Beard Style - 100</label>
+      <label><input type="checkbox" class="service" value="Facial - 1000"> Facial - 1000</label>
+      
+      <h3>Select Products</h3>
+      <label><input type="checkbox" class="product" value="Shampoo - 250"> Shampoo - 250</label>
+      <label><input type="checkbox" class="product" value="Hair Oil - 400"> Hair Oil - 400</label>
+      <label><input type="checkbox" class="product" value="Beard Cream - 350"> Beard Cream - 350</label>
+      <label><input type="checkbox" class="product" value="Hair Wax - 300"> Hair Wax - 300</label>
+      <label><input type="checkbox" class="product" value="Perfume - 500"> Perfume - 500</label>
+      <label><input type="checkbox" class="product" value="Man Soap - 150"> Man Soap - 150</label>
+      <label><input type="checkbox" class="product" value="Face Wash - 200"> Face Wash - 200</label>
+
+      <!-- Live Total Show -->
+      <p id="liveTotal">Total: Rs.0</p>
+
+      <button onclick="generateBill()">✅ Payment Received</button>
+      <p id="bill"></p>
+    </div>
+    
+    <button class="logout" onclick="logout()">🚪 Logout</button>
+  </div>
+</div>
+
+<script>
+// Register
+function register(){
+  let user = document.getElementById("regUser").value;
+  let pass = document.getElementById("regPass").value;
+  if(user==="" || pass===""){document.getElementById("regMsg").innerText="❌ تمام فیلڈز بھریں!"; return;}
+  localStorage.setItem("salonUser", user);
+  localStorage.setItem("salonPass", pass);
+  alert("✅ Registration successful! Please login.");
+  showLogin();
+}
+
+// Show Login
+function showLogin(){
+  document.getElementById("registerPage").style.display="none";
+  document.getElementById("loginPage").style.display="block";
+}
+
+// Show Register
+function showRegister(){
+  document.getElementById("loginPage").style.display="none";
+  document.getElementById("registerPage").style.display="block";
+}
+
+// Login
+function login(){
+  let user = document.getElementById("loginUser").value;
+  let pass = document.getElementById("loginPass").value;
+  let savedUser = localStorage.getItem("salonUser");
+  let savedPass = localStorage.getItem("salonPass");
+  if(user===savedUser && pass===savedPass){ showMainApp(); }
+  else{ document.getElementById("loginMsg").innerText="❌ غلط یوزر نیم یا پاسورڈ!"; }
+}
+
+// Show Main Dashboard
+function showMainApp(){
+  document.getElementById("registerPage").style.display="none";
+  document.getElementById("loginPage").style.display="none";
+  document.getElementById("mainApp").style.display="block";
+}
+
+// Calculate and Show Live Total
+function updateLiveTotal(){
+  let total = 0;
+  document.querySelectorAll(".service:checked, .product:checked").forEach(item=>{
+    let txt = item.value.split("-");
+    total += parseInt(txt[1]);
+  });
+  document.getElementById("liveTotal").innerText = "Total: Rs."+total;
+}
+
+// Attach event listeners to checkboxes
+document.addEventListener("DOMContentLoaded", ()=>{
+  document.querySelectorAll(".service, .product").forEach(item=>{
+    item.addEventListener("change", updateLiveTotal);
+  });
+});
+
+// Generate Bill
+function generateBill(){
+  let name = document.getElementById("cname").value;
+  let phone = document.getElementById("cphone").value;
+  
+  let total = 0;
+  let details = [];
+
+  document.querySelectorAll(".service:checked").forEach(item=>{
+    let txt = item.value.split("-");
+    details.push(txt[0].trim()+" Rs."+txt[1].trim());
+    total += parseInt(txt[1]);
+  });
+
+  document.querySelectorAll(".product:checked").forEach(item=>{
+    let txt = item.value.split("-");
+    details.push(txt[0].trim()+" Rs."+txt[1].trim());
+    total += parseInt(txt[1]);
+  });
+
+  // Show bill
+  document.getElementById("bill").innerText =
+    `✅ Shukriya ${name}! Services/Products: ${details.join(", ")}. Total Bill: Rs.${total}`;
+
+  // Update today's collection
+  let todayTotal = localStorage.getItem("todayTotal") ? parseInt(localStorage.getItem("todayTotal")) : 0;
+  todayTotal += total;
+  localStorage.setItem("todayTotal", todayTotal);
+  document.getElementById("todayTotal").innerText = todayTotal;
+
+  // WhatsApp message
+// WhatsApp number formatting
+phone = phone.replace(/\D/g, "");
+if(phone.startsWith("0")){ phone = "92" + phone.slice(1); }
+if(phone.startsWith("92") === false){ phone = "92" + phone; }
+
+// WhatsApp message
+let msg = `Salam ${name}, Shukriya! Apne ye services/products liye: ${details.join(", ")}. Total Bill Rs.${total} received.`;
+
+// Redirect instead of popup
+location.href = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
+}
+
+// Show today's collection when login
+window.onload = function(){
+  document.getElementById("todayTotal").innerText = localStorage.getItem("todayTotal") || 0;
+}
+
+// Logout
+function logout(){
+  document.getElementById("mainApp").style.display="none";
+  showLogin();
+}
+</script>
+</body>
+</html>
