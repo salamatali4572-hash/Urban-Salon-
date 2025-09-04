@@ -1,197 +1,404 @@
 <!DOCTYPE html>
-<html lang="ur">
+<html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Urban Punjabi Hair Saloon</title>
-<style>
-body { font-family: Arial; background:#f0f0f0; text-align:center; margin:0; padding:0;}
-.container-box { max-width:400px; margin:50px auto; background:white; padding:20px; border-radius:10px; box-shadow:0 0 10px gray;}
-input, select { display:block; margin:10px auto; padding:10px; width:90%; border:1px solid gray; border-radius:5px;}
-button { margin:10px; padding:10px 20px; border:none; border-radius:5px; cursor:pointer; color:white;}
-.register-btn{background:blue;}
-.login-btn{background:green;}
-.logout{background:red;}
-header{background:#222; color:white; padding:20px; font-size:20px;}
-.card{background:white; border-radius:10px; padding:15px; margin:10px auto; box-shadow:0 0 10px rgba(0,0,0,0.1);}
-.link-btn{background:gray; color:white;}
-.total-box{background:#e3ffe3; padding:10px; margin:10px auto; border-radius:10px;}
-#liveTotal{font-weight:bold; color:darkgreen; margin-top:10px;}
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Salon Manager</title>
+
+  <!-- CSS -->
+  <style>
+    body{margin:0;font-family:sans-serif;background:#0b1220;color:#e5e7eb;}
+    header{display:flex;align-items:center;gap:10px;padding:10px 16px;background:#111;}
+    header h1{margin:0;font-size:18px;font-weight:700}
+    .pill{margin-left:auto;padding:4px 10px;background:#7c3aed;border-radius:999px;font-size:12px}
+    .app{max-width:700px;margin:30px auto;padding:16px}
+    .card{background:#1e293b;padding:20px;border-radius:14px}
+    .tabs{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+    .tab{flex:1;padding:10px;border-radius:8px;text-align:center;cursor:pointer;background:#334155}
+    .tab.active{background:#7c3aed;color:#fff}
+    .hidden{display:none}
+    label{font-size:12px;display:block;margin:6px 0}
+    input{width:100%;padding:10px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:#fff}
+    button{margin-top:8px;padding:8px 12px;border:none;border-radius:8px;background:#7c3aed;color:#fff;font-weight:700;cursor:pointer}
+    ul{margin-top:10px;padding-left:18px}
+    img{border-radius:6px}
+  </style>
 </head>
 <body>
+  <header>
+    <div>💈</div>
+    <h1>Salon Manager</h1>
+    <div class="pill" id="statusPill">Closed</div>
+  </header>
 
-<!-- Register Page -->
-<div id="registerPage" class="container-box">
-  <h2>Urban Punjabi Hair Saloon</h2>
-  <h3>Register</h3>
-  <input type="text" id="regUser" placeholder="Choose User Name">
-  <input type="password" id="regPass" placeholder="Choose Password">
-  <button class="register-btn" onclick="register()">Register</button>
-  <p>Already registered? <button class="link-btn" onclick="showLogin()">Login</button></p>
-  <p id="regMsg" style="color:red;"></p>
-</div>
+  <div class="app">
+    <!-- AUTH -->
+    <section id="auth" class="card">
+      <div class="tabs">
+        <div class="tab active" data-auth="login">Login</div>
+        <div class="tab" data-auth="register">Register</div>
+      </div>
 
-<!-- Login Page -->
-<div id="loginPage" class="container-box" style="display:none;">
-  <h2>Urban Punjabi Hair Saloon</h2>
-  <h3>Login</h3>
-  <input type="text" id="loginUser" placeholder="User Name">
-  <input type="password" id="loginPass" placeholder="Password">
-  <button class="login-btn" onclick="login()">Login</button>
-  <p>Not registered? <button class="link-btn" onclick="showRegister()">Register</button></p>
-  <p id="loginMsg" style="color:red;"></p>
-</div>
+      <!-- Login -->
+      <div id="loginPane">
+        <label>Username</label><input id="loginUser" type="text" />
+        <label>Password</label><input id="loginPass" type="password" />
+        <button id="btnLogin">Login</button>
+      </div>
 
-<!-- Dashboard -->
-<div id="mainApp" style="display:none;">
-  <header>🎉 Welcome to Urban Punjabi Hair Saloon 🎉</header>
+      <!-- Register -->
+      <div id="registerPane" class="hidden">
+        <label>Username</label><input id="regUser" type="text" />
+        <label>Password</label><input id="regPass" type="password" />
+        <label>Owner PIN</label><input id="regPin" type="password" maxlength="6" />
+        <button id="btnRegister">Create Account</button>
+      </div>
+    </section>
 
-  <div class="total-box">
-    <h3>💰 Aaj ki Collection: Rs.<span id="todayTotal">0</span></h3>
+    <!-- DASHBOARD -->
+    <section id="dashboard" class="card hidden">
+      <div class="tabs" id="mainTabs"></div>
+      <div id="tabContent"></div>
+      <button id="btnLogout">Logout</button>
+    </section>
   </div>
 
-  <div class="container-box">
-    <div class="card">
-      <h2>Customer Profile</h2>
-      <input type="text" id="cname" placeholder="Customer Name">
-      <input type="text" id="cphone" placeholder="Phone Number (e.g., 92316xxxxxxx)">
-      
-      <h3>Select Services</h3>
-      <label><input type="checkbox" class="service" value="Hair Cut - 120"> Hair Cut - 120</label>
-      <label><input type="checkbox" class="service" value="Beard Style - 100"> Beard Style - 100</label>
-      <label><input type="checkbox" class="service" value="Facial - 1000"> Facial - 1000</label>
-      
-      <h3>Select Products</h3>
-      <label><input type="checkbox" class="product" value="Shampoo - 250"> Shampoo - 250</label>
-      <label><input type="checkbox" class="product" value="Hair Oil - 400"> Hair Oil - 400</label>
-      <label><input type="checkbox" class="product" value="Beard Cream - 350"> Beard Cream - 350</label>
-      <label><input type="checkbox" class="product" value="Hair Wax - 300"> Hair Wax - 300</label>
-      <label><input type="checkbox" class="product" value="Perfume - 500"> Perfume - 500</label>
-      <label><input type="checkbox" class="product" value="Man Soap - 150"> Man Soap - 150</label>
-      <label><input type="checkbox" class="product" value="Face Wash - 200"> Face Wash - 200</label>
+  <!-- SCRIPT -->
+  <script>
+    const $ = (s, el=document)=>el.querySelector(s);
+    const $$ = (s, el=document)=>Array.from(el.querySelectorAll(s));
 
-      <!-- Live Total Show -->
-      <p id="liveTotal">Total: Rs.0</p>
+    // ====== AUTH SYSTEM ======
+    $$('.tab[data-auth]').forEach(tab=>{
+      tab.addEventListener('click', ()=>{
+        $$('.tab[data-auth]').forEach(t=>t.classList.remove('active'));
+        tab.classList.add('active');
+        $('#loginPane').classList.toggle('hidden', tab.dataset.auth!=='login');
+        $('#registerPane').classList.toggle('hidden', tab.dataset.auth!=='register');
+      });
+    });
 
-      <button onclick="generateBill()">✅ Payment Received</button>
-      <p id="bill"></p>
-    </div>
-    
-    <button class="logout" onclick="logout()">🚪 Logout</button>
-  </div>
-</div>
+    $('#btnRegister').addEventListener('click', ()=>{
+      const u = $('#regUser').value.trim();
+      const p = $('#regPass').value;
+      const pin = $('#regPin').value;
+      if(!u||!p||!pin){alert("Fill all fields");return;}
+      localStorage.setItem("salonUser", JSON.stringify({u,p,pin}));
+      alert("Account created! Now login.");
+      $('#regUser').value=$('#regPass').value=$('#regPin').value="";
+      document.querySelector('[data-auth="login"]').click();
+    });
 
-<script>
-// Register
-function register(){
-  let user = document.getElementById("regUser").value;
-  let pass = document.getElementById("regPass").value;
-  if(user==="" || pass===""){document.getElementById("regMsg").innerText="❌ تمام فیلڈز بھریں!"; return;}
-  localStorage.setItem("salonUser", user);
-  localStorage.setItem("salonPass", pass);
-  alert("✅ Registration successful! Please login.");
-  showLogin();
-}
+    $('#btnLogin').addEventListener('click', ()=>{
+      const u=$('#loginUser').value.trim();
+      const p=$('#loginPass').value;
+      const data=JSON.parse(localStorage.getItem("salonUser")||"{}");
+      if(u===data.u && p===data.p){
+        startDashboard();
+      } else {
+        alert("Invalid login");
+      }
+    });
 
-// Show Login
-function showLogin(){
-  document.getElementById("registerPage").style.display="none";
-  document.getElementById("loginPage").style.display="block";
-}
+    $('#btnLogout').addEventListener('click', ()=>{
+      $('#dashboard').classList.add("hidden");
+      $('#auth').classList.remove("hidden");
+      $('#statusPill').textContent="Closed";
+    });
 
-// Show Register
-function showRegister(){
-  document.getElementById("loginPage").style.display="none";
-  document.getElementById("registerPage").style.display="block";
-}
+    // ====== DASHBOARD SYSTEM ======
+    const tabs = [
+      {id:"appointments", label:"Appointments"},
+      {id:"billing", label:"Billing"},
+      {id:"products", label:"Products & Services"},
+      {id:"customers", label:"Customers"},
+      {id:"sales", label:"Sales"},
+      {id:"history", label:"History"}
+    ];
 
-// Login
-function login(){
-  let user = document.getElementById("loginUser").value;
-  let pass = document.getElementById("loginPass").value;
-  let savedUser = localStorage.getItem("salonUser");
-  let savedPass = localStorage.getItem("salonPass");
-  if(user===savedUser && pass===savedPass){ showMainApp(); }
-  else{ document.getElementById("loginMsg").innerText="❌ غلط یوزر نیم یا پاسورڈ!"; }
-}
+    function startDashboard(){
+      $('#auth').classList.add("hidden");
+      $('#dashboard').classList.remove("hidden");
+      $('#statusPill').textContent="Open";
+      initTabs();
+    }
 
-// Show Main Dashboard
-function showMainApp(){
-  document.getElementById("registerPage").style.display="none";
-  document.getElementById("loginPage").style.display="none";
-  document.getElementById("mainApp").style.display="block";
-}
+    function initTabs(){
+      const bar=$("#mainTabs");
+      bar.innerHTML="";
+      tabs.forEach(t=>{
+        const b=document.createElement("div");
+        b.className="tab";
+        b.textContent=t.label;
+        b.onclick=()=>openTab(t.id);
+        bar.appendChild(b);
+      });
+      openTab("appointments");
+    }
 
-// Calculate and Show Live Total
-function updateLiveTotal(){
-  let total = 0;
-  document.querySelectorAll(".service:checked, .product:checked").forEach(item=>{
-    let txt = item.value.split("-");
-    total += parseInt(txt[1]);
-  });
-  document.getElementById("liveTotal").innerText = "Total: Rs."+total;
-}
+    function openTab(id){
+      $$("#mainTabs .tab").forEach(b=>b.classList.remove("active"));
+      const idx=tabs.findIndex(t=>t.id===id);
+      $$("#mainTabs .tab")[idx].classList.add("active");
+      const box=$("#tabContent");
+      box.innerHTML="";
+      switch(id){
+        case "appointments": renderAppointments(box); break;
+        case "billing": renderBilling(box); break;
+        case "products": renderProducts(box); break;
+        case "customers": renderCustomers(box); break;
+        case "sales": renderSales(box); break;
+        case "history": renderHistory(box); break;
+      }
+    }
 
-// Attach event listeners to checkboxes
-document.addEventListener("DOMContentLoaded", ()=>{
-  document.querySelectorAll(".service, .product").forEach(item=>{
-    item.addEventListener("change", updateLiveTotal);
-  });
-});
+    // ====== APPOINTMENTS ======
+    function renderAppointments(el){
+      el.innerHTML=`
+        <h3>Book Appointment</h3>
+        <label>Name</label><input id="aptName" type="text">
+        <label>Service</label><input id="aptService" type="text">
+        <label>Date & Time</label><input id="aptTime" type="datetime-local">
+        <button id="saveApt">Save</button>
+        <ul id="aptList"></ul>
+      `;
+      $("#saveApt").onclick=()=>{
+        let apts=JSON.parse(localStorage.getItem("apts")||"[]");
+        apts.push({name:$("#aptName").value,service:$("#aptService").value,time:$("#aptTime").value});
+        localStorage.setItem("apts",JSON.stringify(apts));
+        openTab("appointments");
+      };
+      let apts=JSON.parse(localStorage.getItem("apts")||"[]");
+      $("#aptList").innerHTML=apts.map(a=>`<li>${a.name} - ${a.service} at ${a.time}</li>`).join("");
+    }
 
-// Generate Bill
-function generateBill(){
-  let name = document.getElementById("cname").value;
-  let phone = document.getElementById("cphone").value;
-  
-  let total = 0;
-  let details = [];
+    // ====== BILLING with products ======
+    function renderBilling(el){
+      let prods = JSON.parse(localStorage.getItem("prods")||"[]");
 
-  document.querySelectorAll(".service:checked").forEach(item=>{
-    let txt = item.value.split("-");
-    details.push(txt[0].trim()+" Rs."+txt[1].trim());
-    total += parseInt(txt[1]);
-  });
+      el.innerHTML=`
+        <h3>Walk-in Billing</h3>
+        <label>Customer</label><input id="billName" type="text">
+        <label>Phone (WhatsApp)</label><input id="billPhone" type="text">
 
-  document.querySelectorAll(".product:checked").forEach(item=>{
-    let txt = item.value.split("-");
-    details.push(txt[0].trim()+" Rs."+txt[1].trim());
-    total += parseInt(txt[1]);
-  });
+        <h4>Select Products/Services</h4>
+        <div id="billProducts">
+          ${prods.map((p,i)=>`
+            <div>
+              <input type="checkbox" class="billProd" data-index="${i}" data-price="${p.price}" data-name="${p.name}">
+              ${p.name} - $${p.price}
+            </div>
+          `).join("")}
+        </div>
 
-  // Show bill
-  document.getElementById("bill").innerText =
-    `✅ Shukriya ${name}! Services/Products: ${details.join(", ")}. Total Bill: Rs.${total}`;
+        <p><b>Total: $<span id="billTotal">0</span></b></p>
+        <button id="saveBill">Save Bill</button>
+        <ul id="billList"></ul>
+      `;
 
-  // Update today's collection
-  let todayTotal = localStorage.getItem("todayTotal") ? parseInt(localStorage.getItem("todayTotal")) : 0;
-  todayTotal += total;
-  localStorage.setItem("todayTotal", todayTotal);
-  document.getElementById("todayTotal").innerText = todayTotal;
+      function updateTotal(){
+        let total = 0;
+        $$(".billProd:checked").forEach(c=>{
+          total += +c.dataset.price;
+        });
+        $("#billTotal").textContent = total;
+      }
+      $$(".billProd").forEach(c=>c.addEventListener("change", updateTotal));
 
-  // WhatsApp message
-// WhatsApp number formatting
-phone = phone.replace(/\D/g, "");
-if(phone.startsWith("0")){ phone = "92" + phone.slice(1); }
-if(phone.startsWith("92") === false){ phone = "92" + phone; }
+      $("#saveBill").onclick=()=>{
+        let bills=JSON.parse(localStorage.getItem("bills")||"[]");
+        let selected = [];
+        let total = 0;
+        $$(".billProd:checked").forEach(c=>{
+          selected.push({name:c.dataset.name,price:+c.dataset.price});
+          total += +c.dataset.price;
+        });
 
-// WhatsApp message
-let msg = `Salam ${name}, Shukriya! Apne ye services/products liye: ${details.join(", ")}. Total Bill Rs.${total} received.`;
+        if(!selected.length){alert("Select at least one item");return;}
 
-// Redirect instead of popup
-location.href = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
-}
+        let bill={
+          name:$("#billName").value,
+          phone:$("#billPhone").value,
+          items:selected,
+          amt:total,
+          time:new Date().toLocaleString()
+        };
+        bills.push(bill);
+        localStorage.setItem("bills",JSON.stringify(bills));
 
-// Show today's collection when login
-window.onload = function(){
-  document.getElementById("todayTotal").innerText = localStorage.getItem("todayTotal") || 0;
-}
+        let dayTotal=+localStorage.getItem("totalSale")||0;
+        localStorage.setItem("totalSale",dayTotal+bill.amt);
 
-// Logout
-function logout(){
-  document.getElementById("mainApp").style.display="none";
-  showLogin();
-}
-</script>
+        openTab("billing");
+      };
+
+      let bills=JSON.parse(localStorage.getItem("bills")||"[]");
+      $("#billList").innerHTML=bills.map((b,i)=>`
+        <li>
+          <b>${b.name}</b> - $${b.amt}<br>
+          <small>${b.time}</small><br>
+          <button onclick="printReceipt(${i})">🖨 Print</button>
+          <button onclick="sendWhatsApp(${i})">📲 WhatsApp</button>
+        </li>
+      `).join("");
+    }
+
+    function printReceipt(index){
+      let bills=JSON.parse(localStorage.getItem("bills")||"[]");
+      let b=bills[index];
+      let itemsHtml = b.items.map(it=>`<li>${it.name} - $${it.price}</li>`).join("");
+      let w=window.open("","","width=400,height=600");
+      w.document.write(`
+        <h2>Salon Receipt</h2>
+        <p><b>Customer:</b> ${b.name}</p>
+        <ul>${itemsHtml}</ul>
+        <p><b>Total:</b> $${b.amt}</p>
+        <p><b>Date:</b> ${b.time}</p>
+        <hr>
+        <p>Thank you for visiting!</p>
+      `);
+      w.print();
+      w.close();
+    }
+
+    function sendWhatsApp(index){
+      let bills=JSON.parse(localStorage.getItem("bills")||"[]");
+      let b=bills[index];
+      if(!b.phone){alert("No phone number saved");return;}
+      let itemsText = b.items.map(it=>`${it.name} - $${it.price}`).join("%0a");
+      let msg=`Hello ${b.name},%0aYour bill:%0a${itemsText}%0aTotal: $${b.amt}%0aDate: ${b.time}%0aThank you for visiting our salon!`;
+      let url=`https://wa.me/${b.phone}?text=${msg}`;
+      window.open(url,"_blank");
+    }
+
+    // ====== PRODUCTS ======
+    function renderProducts(el){
+      el.innerHTML=`
+        <h3>Products & Services</h3>
+        <label>Name</label><input id="prodName" type="text">
+        <label>Price</label><input id="prodPrice" type="number">
+        <label>Photo URL (optional)</label><input id="prodPhoto" type="text">
+        <label>Or Upload Photo</label><input id="prodFile" type="file" accept="image/*">
+        <button id="saveProd">Save Product</button>
+        <div id="prodList"></div>
+      `;
+
+      let editingIndex = null;
+
+      $("#saveProd").onclick=()=>{
+        let prods=JSON.parse(localStorage.getItem("prods")||"[]");
+        let file=$("#prodFile").files[0];
+        let name=$("#prodName").value;
+        let price=+$("#prodPrice").value;
+        let url=$("#prodPhoto").value;
+
+        function saveData(photo){
+          if(editingIndex!==null){
+            prods[editingIndex] = {name, price, photo};
+            editingIndex=null;
+          } else {
+            prods.push({name, price, photo});
+          }
+          localStorage.setItem("prods",JSON.stringify(prods));
+          openTab("products");
+        }
+
+        if(file){
+          let reader=new FileReader();
+          reader.onload=function(e){
+            saveData(e.target.result);
+          }
+          reader.readAsDataURL(file);
+        } else {
+          saveData(url);
+        }
+      };
+
+      let prods=JSON.parse(localStorage.getItem("prods")||"[]");
+      $("#prodList").innerHTML=prods.map((p,i)=>`
+        <div style="margin:6px 0;padding:6px;border:1px solid #333;border-radius:6px;display:flex;align-items:center;gap:10px;">
+          <img src="${p.photo}" width="50" height="50"> 
+          <div style="flex:1">${p.name} - $${p.price}</div>
+          <button onclick="editProduct(${i})">✏️ Edit</button>
+          <button onclick="deleteProduct(${i})">❌ Delete</button>
+        </div>
+      `).join("");
+
+      window.editProduct=(i)=>{
+        let prods=JSON.parse(localStorage.getItem("prods")||"[]");
+        let p=prods[i];
+        $("#prodName").value=p.name;
+        $("#prodPrice").value=p.price;
+        $("#prodPhoto").value=p.photo.startsWith("data:") ? "" : p.photo;
+        $("#prodFile").value="";
+        editingIndex=i;
+      };
+
+      window.deleteProduct=(i)=>{
+        let prods=JSON.parse(localStorage.getItem("prods")||"[]");
+        prods.splice(i,1);
+        localStorage.setItem("prods",JSON.stringify(prods));
+        openTab("products");
+      };
+    }
+
+    // ====== CUSTOMERS ======
+    function renderCustomers(el){
+      el.innerHTML=`
+        <h3>Save Customer Info</h3>
+        <label>Name</label><input id="custName" type="text">
+        <label>Phone</label><input id="custPhone" type="text">
+        <button id="saveCust">Save Customer</button>
+        <ul id="custList"></ul>
+      `;
+      $("#saveCust").onclick=()=>{
+        let custs=JSON.parse(localStorage.getItem("custs")||"[]");
+        custs.push({name:$("#custName").value,phone:$("#custPhone").value});
+        localStorage.setItem("custs",JSON.stringify(custs));
+        openTab("customers");
+      };
+      let custs=JSON.parse(localStorage.getItem("custs")||"[]");
+      $("#custList").innerHTML=custs.map(c=>`<li>${c.name} (${c.phone})</li>`).join("");
+    }
+
+    // ====== SALES ======
+    function renderSales(el){
+      let total=+localStorage.getItem("totalSale")||0;
+      el.innerHTML=`
+        <h3>Today's Sales</h3>
+        <p>Total: $${total}</p>
+        <button id="closeDay">Close Day</button>
+      `;
+      $("#closeDay").onclick=()=>{
+        let history=JSON.parse(localStorage.getItem("history")||"[]");
+        history.push({date:new Date().toLocaleString(),total});
+        localStorage.setItem("history",JSON.stringify(history));
+        localStorage.setItem("totalSale",0);
+        localStorage.setItem("bills","[]");
+        alert("Day closed. Data saved to history.");
+        openTab("sales");
+      };
+    }
+
+    // ====== HISTORY ======
+    function renderHistory(el){
+      let hist=JSON.parse(localStorage.getItem("history")||"[]");
+      el.innerHTML=`
+        <h3>Sales History</h3>
+        <ul>${hist.map(h=>`<li>${h.date}: $${h.total}</li>`).join("")}</ul>
+        <label>Password to delete history</label><input id="histPass" type="password">
+        <button id="delHist">Delete History</button>
+      `;
+      $("#delHist").onclick=()=>{
+        const data=JSON.parse(localStorage.getItem("salonUser")||"{}");
+        if($("#histPass").value===data.pin){
+          localStorage.setItem("history","[]");
+          openTab("history");
+        } else {
+          alert("Wrong PIN");
+        }
+      };
+    }
+  </script>
 </body>
-</html>
+  </html>
