@@ -1,11 +1,10 @@
-<!DOCTYPE html>
+        <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Salon Manager</title>
 
-  <!-- CSS -->
   <style>
     body{margin:0;font-family:sans-serif;background:#0b1220;color:#e5e7eb;}
     header{display:flex;align-items:center;gap:10px;padding:10px 16px;background:#111;}
@@ -37,6 +36,7 @@
       <div class="tabs">
         <div class="tab active" data-auth="login">Login</div>
         <div class="tab" data-auth="register">Register</div>
+        <div class="tab" data-auth="forget">Forget Password</div>
       </div>
 
       <!-- Login -->
@@ -53,6 +53,14 @@
         <label>Owner PIN</label><input id="regPin" type="password" maxlength="6" />
         <button id="btnRegister">Create Account</button>
       </div>
+
+      <!-- Forget Password -->
+      <div id="forgetPane" class="hidden">
+        <label>Username</label><input id="forUser" type="text" />
+        <label>Owner PIN</label><input id="forPin" type="password" maxlength="6" />
+        <label>New Password</label><input id="forNewPass" type="password" />
+        <button id="btnForget">Reset Password</button>
+      </div>
     </section>
 
     <!-- DASHBOARD -->
@@ -63,10 +71,40 @@
     </section>
   </div>
 
-  <!-- SCRIPT -->
   <script>
     const $ = (s, el=document)=>el.querySelector(s);
     const $$ = (s, el=document)=>Array.from(el.querySelectorAll(s));
+
+    // ====== GLOBAL HELPERS ======
+    function getUsers(){
+      return JSON.parse(localStorage.getItem("users")||"[]");
+    }
+    function saveUsers(users){
+      localStorage.setItem("users",JSON.stringify(users));
+    }
+    function getCurrentUser(){
+      return localStorage.getItem("currentUser");
+    }
+    function setCurrentUser(u){
+      localStorage.setItem("currentUser",u);
+    }
+    function logoutUser(){
+      localStorage.removeItem("currentUser");
+    }
+
+    // per-user data storage
+    function getData(key){
+      let all=JSON.parse(localStorage.getItem("salonData")||"{}");
+      let user=getCurrentUser();
+      return all[user]?.[key]||[];
+    }
+    function saveData(key,value){
+      let all=JSON.parse(localStorage.getItem("salonData")||"{}");
+      let user=getCurrentUser();
+      if(!all[user]) all[user]={};
+      all[user][key]=value;
+      localStorage.setItem("salonData",JSON.stringify(all));
+    }
 
     // ====== AUTH SYSTEM ======
     $$('.tab[data-auth]').forEach(tab=>{
@@ -75,15 +113,19 @@
         tab.classList.add('active');
         $('#loginPane').classList.toggle('hidden', tab.dataset.auth!=='login');
         $('#registerPane').classList.toggle('hidden', tab.dataset.auth!=='register');
+        $('#forgetPane').classList.toggle('hidden', tab.dataset.auth!=='forget');
       });
     });
 
     $('#btnRegister').addEventListener('click', ()=>{
-      const u = $('#regUser').value.trim();
-      const p = $('#regPass').value;
-      const pin = $('#regPin').value;
+      const u=$('#regUser').value.trim();
+      const p=$('#regPass').value;
+      const pin=$('#regPin').value;
       if(!u||!p||!pin){alert("Fill all fields");return;}
-      localStorage.setItem("salonUser", JSON.stringify({u,p,pin}));
+      let users=getUsers();
+      if(users.find(x=>x.u===u)){alert("User already exists");return;}
+      users.push({u,p,pin});
+      saveUsers(users);
       alert("Account created! Now login.");
       $('#regUser').value=$('#regPass').value=$('#regPin').value="";
       document.querySelector('[data-auth="login"]').click();
@@ -92,8 +134,10 @@
     $('#btnLogin').addEventListener('click', ()=>{
       const u=$('#loginUser').value.trim();
       const p=$('#loginPass').value;
-      const data=JSON.parse(localStorage.getItem("salonUser")||"{}");
-      if(u===data.u && p===data.p){
+      const users=getUsers();
+      const found=users.find(x=>x.u===u && x.p===p);
+      if(found){
+        setCurrentUser(u);
         startDashboard();
       } else {
         alert("Invalid login");
@@ -101,9 +145,25 @@
     });
 
     $('#btnLogout').addEventListener('click', ()=>{
+      logoutUser();
       $('#dashboard').classList.add("hidden");
       $('#auth').classList.remove("hidden");
       $('#statusPill').textContent="Closed";
+    });
+
+    // Forget password
+    $('#btnForget').addEventListener('click', ()=>{
+      const u=$('#forUser').value.trim();
+      const pin=$('#forPin').value;
+      const newP=$('#forNewPass').value;
+      let users=getUsers();
+      let found=users.find(x=>x.u===u && x.pin===pin);
+      if(!found){alert("Invalid username or PIN");return;}
+      found.p=newP;
+      saveUsers(users);
+      alert("Password reset successful. Now login.");
+      $('#forUser').value=$('#forPin').value=$('#forNewPass').value="";
+      document.querySelector('[data-auth="login"]').click();
     });
 
     // ====== DASHBOARD SYSTEM ======
@@ -163,19 +223,18 @@
         <ul id="aptList"></ul>
       `;
       $("#saveApt").onclick=()=>{
-        let apts=JSON.parse(localStorage.getItem("apts")||"[]");
+        let apts=getData("apts");
         apts.push({name:$("#aptName").value,service:$("#aptService").value,time:$("#aptTime").value});
-        localStorage.setItem("apts",JSON.stringify(apts));
+        saveData("apts",apts);
         openTab("appointments");
       };
-      let apts=JSON.parse(localStorage.getItem("apts")||"[]");
+      let apts=getData("apts");
       $("#aptList").innerHTML=apts.map(a=>`<li>${a.name} - ${a.service} at ${a.time}</li>`).join("");
     }
 
-    // ====== BILLING with products ======
+    // ====== BILLING ======
     function renderBilling(el){
-      let prods = JSON.parse(localStorage.getItem("prods")||"[]");
-
+      let prods=getData("prods");
       el.innerHTML=`
         <h3>Walk-in Billing</h3>
         <label>Customer</label><input id="billName" type="text">
@@ -197,42 +256,30 @@
       `;
 
       function updateTotal(){
-        let total = 0;
-        $$(".billProd:checked").forEach(c=>{
-          total += +c.dataset.price;
-        });
-        $("#billTotal").textContent = total;
+        let total=0;
+        $$(".billProd:checked").forEach(c=>{total+=+c.dataset.price});
+        $("#billTotal").textContent=total;
       }
-      $$(".billProd").forEach(c=>c.addEventListener("change", updateTotal));
+      $$(".billProd").forEach(c=>c.addEventListener("change",updateTotal));
 
       $("#saveBill").onclick=()=>{
-        let bills=JSON.parse(localStorage.getItem("bills")||"[]");
-        let selected = [];
-        let total = 0;
+        let bills=getData("bills");
+        let selected=[];
+        let total=0;
         $$(".billProd:checked").forEach(c=>{
           selected.push({name:c.dataset.name,price:+c.dataset.price});
-          total += +c.dataset.price;
+          total+=+c.dataset.price;
         });
-
         if(!selected.length){alert("Select at least one item");return;}
-
-        let bill={
-          name:$("#billName").value,
-          phone:$("#billPhone").value,
-          items:selected,
-          amt:total,
-          time:new Date().toLocaleString()
-        };
+        let bill={name:$("#billName").value,phone:$("#billPhone").value,items:selected,amt:total,time:new Date().toLocaleString()};
         bills.push(bill);
-        localStorage.setItem("bills",JSON.stringify(bills));
-
-        let dayTotal=+localStorage.getItem("totalSale")||0;
-        localStorage.setItem("totalSale",dayTotal+bill.amt);
-
+        saveData("bills",bills);
+        let dayTotal=+getData("totalSale")||0;
+        saveData("totalSale",dayTotal+bill.amt);
         openTab("billing");
       };
 
-      let bills=JSON.parse(localStorage.getItem("bills")||"[]");
+      let bills=getData("bills");
       $("#billList").innerHTML=bills.map((b,i)=>`
         <li>
           <b>${b.name}</b> - $${b.amt}<br>
@@ -244,9 +291,9 @@
     }
 
     function printReceipt(index){
-      let bills=JSON.parse(localStorage.getItem("bills")||"[]");
+      let bills=getData("bills");
       let b=bills[index];
-      let itemsHtml = b.items.map(it=>`<li>${it.name} - $${it.price}</li>`).join("");
+      let itemsHtml=b.items.map(it=>`<li>${it.name} - $${it.price}</li>`).join("");
       let w=window.open("","","width=400,height=600");
       w.document.write(`
         <h2>Salon Receipt</h2>
@@ -262,10 +309,10 @@
     }
 
     function sendWhatsApp(index){
-      let bills=JSON.parse(localStorage.getItem("bills")||"[]");
+      let bills=getData("bills");
       let b=bills[index];
       if(!b.phone){alert("No phone number saved");return;}
-      let itemsText = b.items.map(it=>`${it.name} - $${it.price}`).join("%0a");
+      let itemsText=b.items.map(it=>`${it.name} - $${it.price}`).join("%0a");
       let msg=`Hello ${b.name},%0aYour bill:%0a${itemsText}%0aTotal: $${b.amt}%0aDate: ${b.time}%0aThank you for visiting our salon!`;
       let url=`https://wa.me/${b.phone}?text=${msg}`;
       window.open(url,"_blank");
@@ -282,62 +329,53 @@
         <button id="saveProd">Save Product</button>
         <div id="prodList"></div>
       `;
-
-      let editingIndex = null;
-
+      let editingIndex=null;
       $("#saveProd").onclick=()=>{
-        let prods=JSON.parse(localStorage.getItem("prods")||"[]");
+        let prods=getData("prods");
         let file=$("#prodFile").files[0];
         let name=$("#prodName").value;
         let price=+$("#prodPrice").value;
         let url=$("#prodPhoto").value;
-
-        function saveData(photo){
+        function saveDataNow(photo){
           if(editingIndex!==null){
-            prods[editingIndex] = {name, price, photo};
+            prods[editingIndex]={name,price,photo};
             editingIndex=null;
-          } else {
-            prods.push({name, price, photo});
+          }else{
+            prods.push({name,price,photo});
           }
-          localStorage.setItem("prods",JSON.stringify(prods));
+          saveData("prods",prods);
           openTab("products");
         }
-
         if(file){
           let reader=new FileReader();
-          reader.onload=function(e){
-            saveData(e.target.result);
-          }
+          reader.onload=(e)=>saveDataNow(e.target.result);
           reader.readAsDataURL(file);
-        } else {
-          saveData(url);
+        }else{
+          saveDataNow(url);
         }
       };
-
-      let prods=JSON.parse(localStorage.getItem("prods")||"[]");
+      let prods=getData("prods");
       $("#prodList").innerHTML=prods.map((p,i)=>`
         <div style="margin:6px 0;padding:6px;border:1px solid #333;border-radius:6px;display:flex;align-items:center;gap:10px;">
-          <img src="${p.photo}" width="50" height="50"> 
+          <img src="${p.photo}" width="50" height="50">
           <div style="flex:1">${p.name} - $${p.price}</div>
           <button onclick="editProduct(${i})">✏️ Edit</button>
           <button onclick="deleteProduct(${i})">❌ Delete</button>
         </div>
       `).join("");
-
       window.editProduct=(i)=>{
-        let prods=JSON.parse(localStorage.getItem("prods")||"[]");
+        let prods=getData("prods");
         let p=prods[i];
         $("#prodName").value=p.name;
         $("#prodPrice").value=p.price;
-        $("#prodPhoto").value=p.photo.startsWith("data:") ? "" : p.photo;
+        $("#prodPhoto").value=p.photo.startsWith("data:")?"":p.photo;
         $("#prodFile").value="";
         editingIndex=i;
       };
-
       window.deleteProduct=(i)=>{
-        let prods=JSON.parse(localStorage.getItem("prods")||"[]");
+        let prods=getData("prods");
         prods.splice(i,1);
-        localStorage.setItem("prods",JSON.stringify(prods));
+        saveData("prods",prods);
         openTab("products");
       };
     }
@@ -352,53 +390,19 @@
         <ul id="custList"></ul>
       `;
       $("#saveCust").onclick=()=>{
-        let custs=JSON.parse(localStorage.getItem("custs")||"[]");
+        let custs=getData("custs");
         custs.push({name:$("#custName").value,phone:$("#custPhone").value});
-        localStorage.setItem("custs",JSON.stringify(custs));
+        saveData("custs",custs);
         openTab("customers");
       };
-      let custs=JSON.parse(localStorage.getItem("custs")||"[]");
+      let custs=getData("custs");
       $("#custList").innerHTML=custs.map(c=>`<li>${c.name} (${c.phone})</li>`).join("");
     }
 
     // ====== SALES ======
     function renderSales(el){
-      let total=+localStorage.getItem("totalSale")||0;
+      let total=+getData("totalSale")||0;
       el.innerHTML=`
         <h3>Today's Sales</h3>
         <p>Total: $${total}</p>
-        <button id="closeDay">Close Day</button>
-      `;
-      $("#closeDay").onclick=()=>{
-        let history=JSON.parse(localStorage.getItem("history")||"[]");
-        history.push({date:new Date().toLocaleString(),total});
-        localStorage.setItem("history",JSON.stringify(history));
-        localStorage.setItem("totalSale",0);
-        localStorage.setItem("bills","[]");
-        alert("Day closed. Data saved to history.");
-        openTab("sales");
-      };
-    }
-
-    // ====== HISTORY ======
-    function renderHistory(el){
-      let hist=JSON.parse(localStorage.getItem("history")||"[]");
-      el.innerHTML=`
-        <h3>Sales History</h3>
-        <ul>${hist.map(h=>`<li>${h.date}: $${h.total}</li>`).join("")}</ul>
-        <label>Password to delete history</label><input id="histPass" type="password">
-        <button id="delHist">Delete History</button>
-      `;
-      $("#delHist").onclick=()=>{
-        const data=JSON.parse(localStorage.getItem("salonUser")||"{}");
-        if($("#histPass").value===data.pin){
-          localStorage.setItem("history","[]");
-          openTab("history");
-        } else {
-          alert("Wrong PIN");
-        }
-      };
-    }
-  </script>
-</body>
-  </html>
+        <button id
