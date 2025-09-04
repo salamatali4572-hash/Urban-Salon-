@@ -1,10 +1,11 @@
-        <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Salon Manager</title>
 
+  <!-- CSS -->
   <style>
     body{margin:0;font-family:sans-serif;background:#0b1220;color:#e5e7eb;}
     header{display:flex;align-items:center;gap:10px;padding:10px 16px;background:#111;}
@@ -36,7 +37,7 @@
       <div class="tabs">
         <div class="tab active" data-auth="login">Login</div>
         <div class="tab" data-auth="register">Register</div>
-        <div class="tab" data-auth="forget">Forget Password</div>
+        <div class="tab" data-auth="forgot">Forgot</div>
       </div>
 
       <!-- Login -->
@@ -54,12 +55,11 @@
         <button id="btnRegister">Create Account</button>
       </div>
 
-      <!-- Forget Password -->
-      <div id="forgetPane" class="hidden">
-        <label>Username</label><input id="forUser" type="text" />
-        <label>Owner PIN</label><input id="forPin" type="password" maxlength="6" />
-        <label>New Password</label><input id="forNewPass" type="password" />
-        <button id="btnForget">Reset Password</button>
+      <!-- Forgot -->
+      <div id="forgotPane" class="hidden">
+        <label>Username</label><input id="forgotUser" type="text" />
+        <label>Owner PIN</label><input id="forgotPin" type="password" maxlength="6" />
+        <button id="btnForgot">Recover Account</button>
       </div>
     </section>
 
@@ -71,72 +71,61 @@
     </section>
   </div>
 
+  <!-- SCRIPT -->
   <script>
     const $ = (s, el=document)=>el.querySelector(s);
     const $$ = (s, el=document)=>Array.from(el.querySelectorAll(s));
 
-    // ====== GLOBAL HELPERS ======
-    function getUsers(){
-      return JSON.parse(localStorage.getItem("users")||"[]");
+    // ====== STORAGE HELPERS ======
+    function getUsersObj(){
+      return JSON.parse(localStorage.getItem("salonUsers") || "{}");
     }
-    function saveUsers(users){
-      localStorage.setItem("users",JSON.stringify(users));
+    function saveUsersObj(users){
+      localStorage.setItem("salonUsers", JSON.stringify(users));
     }
     function getCurrentUser(){
       return localStorage.getItem("currentUser");
     }
     function setCurrentUser(u){
-      localStorage.setItem("currentUser",u);
-    }
-    function logoutUser(){
-      localStorage.removeItem("currentUser");
+      localStorage.setItem("currentUser", u);
     }
 
-    // per-user data storage
-    function getData(key){
-      let all=JSON.parse(localStorage.getItem("salonData")||"{}");
-      let user=getCurrentUser();
-      return all[user]?.[key]||[];
-    }
-    function saveData(key,value){
-      let all=JSON.parse(localStorage.getItem("salonData")||"{}");
-      let user=getCurrentUser();
-      if(!all[user]) all[user]={};
-      all[user][key]=value;
-      localStorage.setItem("salonData",JSON.stringify(all));
-    }
-
-    // ====== AUTH SYSTEM ======
+    // ====== AUTH TABS ======
     $$('.tab[data-auth]').forEach(tab=>{
       tab.addEventListener('click', ()=>{
         $$('.tab[data-auth]').forEach(t=>t.classList.remove('active'));
         tab.classList.add('active');
         $('#loginPane').classList.toggle('hidden', tab.dataset.auth!=='login');
         $('#registerPane').classList.toggle('hidden', tab.dataset.auth!=='register');
-        $('#forgetPane').classList.toggle('hidden', tab.dataset.auth!=='forget');
+        $('#forgotPane').classList.toggle('hidden', tab.dataset.auth!=='forgot');
       });
     });
 
+    // ====== REGISTER ======
     $('#btnRegister').addEventListener('click', ()=>{
-      const u=$('#regUser').value.trim();
-      const p=$('#regPass').value;
-      const pin=$('#regPin').value;
+      const u = $('#regUser').value.trim();
+      const p = $('#regPass').value;
+      const pin = $('#regPin').value.trim();
       if(!u||!p||!pin){alert("Fill all fields");return;}
-      let users=getUsers();
-      if(users.find(x=>x.u===u)){alert("User already exists");return;}
-      users.push({u,p,pin});
-      saveUsers(users);
+      let users = getUsersObj();
+      if(users[u]){alert("Username already exists");return;}
+      users[u] = {
+        password:p,
+        pin:pin,
+        data:{apts:[],prods:[],bills:[],custs:[],history:[],totalSale:0}
+      };
+      saveUsersObj(users);
       alert("Account created! Now login.");
       $('#regUser').value=$('#regPass').value=$('#regPin').value="";
       document.querySelector('[data-auth="login"]').click();
     });
 
+    // ====== LOGIN ======
     $('#btnLogin').addEventListener('click', ()=>{
       const u=$('#loginUser').value.trim();
       const p=$('#loginPass').value;
-      const users=getUsers();
-      const found=users.find(x=>x.u===u && x.p===p);
-      if(found){
+      let users=getUsersObj();
+      if(users[u] && users[u].password===p){
         setCurrentUser(u);
         startDashboard();
       } else {
@@ -144,26 +133,24 @@
       }
     });
 
+    // ====== FORGOT ======
+    $('#btnForgot').addEventListener('click', ()=>{
+      const u=$('#forgotUser').value.trim();
+      const pin=$('#forgotPin').value.trim();
+      let users=getUsersObj();
+      if(users[u] && users[u].pin===pin){
+        alert("Your password is: "+users[u].password);
+      } else {
+        alert("Wrong details");
+      }
+    });
+
+    // ====== LOGOUT ======
     $('#btnLogout').addEventListener('click', ()=>{
-      logoutUser();
       $('#dashboard').classList.add("hidden");
       $('#auth').classList.remove("hidden");
       $('#statusPill').textContent="Closed";
-    });
-
-    // Forget password
-    $('#btnForget').addEventListener('click', ()=>{
-      const u=$('#forUser').value.trim();
-      const pin=$('#forPin').value;
-      const newP=$('#forNewPass').value;
-      let users=getUsers();
-      let found=users.find(x=>x.u===u && x.pin===pin);
-      if(!found){alert("Invalid username or PIN");return;}
-      found.p=newP;
-      saveUsers(users);
-      alert("Password reset successful. Now login.");
-      $('#forUser').value=$('#forPin').value=$('#forNewPass').value="";
-      document.querySelector('[data-auth="login"]').click();
+      setCurrentUser("");
     });
 
     // ====== DASHBOARD SYSTEM ======
@@ -173,7 +160,8 @@
       {id:"products", label:"Products & Services"},
       {id:"customers", label:"Customers"},
       {id:"sales", label:"Sales"},
-      {id:"history", label:"History"}
+      {id:"history", label:"History"},
+      {id:"support", label:"Support"}
     ];
 
     function startDashboard(){
@@ -209,11 +197,23 @@
         case "customers": renderCustomers(box); break;
         case "sales": renderSales(box); break;
         case "history": renderHistory(box); break;
+        case "support": renderSupport(box); break;
       }
+    }
+
+    function getUserData(){
+      let users=getUsersObj();
+      return users[getCurrentUser()].data;
+    }
+    function saveUserData(data){
+      let users=getUsersObj();
+      users[getCurrentUser()].data=data;
+      saveUsersObj(users);
     }
 
     // ====== APPOINTMENTS ======
     function renderAppointments(el){
+      let data=getUserData();
       el.innerHTML=`
         <h3>Book Appointment</h3>
         <label>Name</label><input id="aptName" type="text">
@@ -223,23 +223,21 @@
         <ul id="aptList"></ul>
       `;
       $("#saveApt").onclick=()=>{
-        let apts=getData("apts");
-        apts.push({name:$("#aptName").value,service:$("#aptService").value,time:$("#aptTime").value});
-        saveData("apts",apts);
+        data.apts.push({name:$("#aptName").value,service:$("#aptService").value,time:$("#aptTime").value});
+        saveUserData(data);
         openTab("appointments");
       };
-      let apts=getData("apts");
-      $("#aptList").innerHTML=apts.map(a=>`<li>${a.name} - ${a.service} at ${a.time}</li>`).join("");
+      $("#aptList").innerHTML=data.apts.map(a=>`<li>${a.name} - ${a.service} at ${a.time}</li>`).join("");
     }
 
     // ====== BILLING ======
     function renderBilling(el){
-      let prods=getData("prods");
+      let data=getUserData();
+      let prods=data.prods||[];
       el.innerHTML=`
         <h3>Walk-in Billing</h3>
         <label>Customer</label><input id="billName" type="text">
         <label>Phone (WhatsApp)</label><input id="billPhone" type="text">
-
         <h4>Select Products/Services</h4>
         <div id="billProducts">
           ${prods.map((p,i)=>`
@@ -249,38 +247,30 @@
             </div>
           `).join("")}
         </div>
-
         <p><b>Total: $<span id="billTotal">0</span></b></p>
         <button id="saveBill">Save Bill</button>
         <ul id="billList"></ul>
       `;
-
       function updateTotal(){
         let total=0;
-        $$(".billProd:checked").forEach(c=>{total+=+c.dataset.price});
+        $$(".billProd:checked").forEach(c=>total+=+c.dataset.price);
         $("#billTotal").textContent=total;
       }
-      $$(".billProd").forEach(c=>c.addEventListener("change",updateTotal));
-
+      $$(".billProd").forEach(c=>c.addEventListener("change", updateTotal));
       $("#saveBill").onclick=()=>{
-        let bills=getData("bills");
-        let selected=[];
-        let total=0;
+        let selected=[]; let total=0;
         $$(".billProd:checked").forEach(c=>{
           selected.push({name:c.dataset.name,price:+c.dataset.price});
           total+=+c.dataset.price;
         });
         if(!selected.length){alert("Select at least one item");return;}
         let bill={name:$("#billName").value,phone:$("#billPhone").value,items:selected,amt:total,time:new Date().toLocaleString()};
-        bills.push(bill);
-        saveData("bills",bills);
-        let dayTotal=+getData("totalSale")||0;
-        saveData("totalSale",dayTotal+bill.amt);
+        data.bills.push(bill);
+        data.totalSale=(data.totalSale||0)+bill.amt;
+        saveUserData(data);
         openTab("billing");
       };
-
-      let bills=getData("bills");
-      $("#billList").innerHTML=bills.map((b,i)=>`
+      $("#billList").innerHTML=data.bills.map((b,i)=>`
         <li>
           <b>${b.name}</b> - $${b.amt}<br>
           <small>${b.time}</small><br>
@@ -289,37 +279,26 @@
         </li>
       `).join("");
     }
-
-    function printReceipt(index){
-      let bills=getData("bills");
-      let b=bills[index];
+    window.printReceipt=(index)=>{
+      let data=getUserData();
+      let b=data.bills[index];
       let itemsHtml=b.items.map(it=>`<li>${it.name} - $${it.price}</li>`).join("");
       let w=window.open("","","width=400,height=600");
-      w.document.write(`
-        <h2>Salon Receipt</h2>
-        <p><b>Customer:</b> ${b.name}</p>
-        <ul>${itemsHtml}</ul>
-        <p><b>Total:</b> $${b.amt}</p>
-        <p><b>Date:</b> ${b.time}</p>
-        <hr>
-        <p>Thank you for visiting!</p>
-      `);
-      w.print();
-      w.close();
-    }
-
-    function sendWhatsApp(index){
-      let bills=getData("bills");
-      let b=bills[index];
+      w.document.write(`<h2>Salon Receipt</h2><p><b>Customer:</b> ${b.name}</p><ul>${itemsHtml}</ul><p><b>Total:</b> $${b.amt}</p><p><b>Date:</b> ${b.time}</p><hr><p>Thank you for visiting!</p>`);
+      w.print();w.close();
+    };
+    window.sendWhatsApp=(index)=>{
+      let data=getUserData();let b=data.bills[index];
       if(!b.phone){alert("No phone number saved");return;}
       let itemsText=b.items.map(it=>`${it.name} - $${it.price}`).join("%0a");
       let msg=`Hello ${b.name},%0aYour bill:%0a${itemsText}%0aTotal: $${b.amt}%0aDate: ${b.time}%0aThank you for visiting our salon!`;
       let url=`https://wa.me/${b.phone}?text=${msg}`;
       window.open(url,"_blank");
-    }
+    };
 
     // ====== PRODUCTS ======
     function renderProducts(el){
+      let data=getUserData();
       el.innerHTML=`
         <h3>Products & Services</h3>
         <label>Name</label><input id="prodName" type="text">
@@ -331,57 +310,33 @@
       `;
       let editingIndex=null;
       $("#saveProd").onclick=()=>{
-        let prods=getData("prods");
         let file=$("#prodFile").files[0];
         let name=$("#prodName").value;
         let price=+$("#prodPrice").value;
         let url=$("#prodPhoto").value;
-        function saveDataNow(photo){
-          if(editingIndex!==null){
-            prods[editingIndex]={name,price,photo};
-            editingIndex=null;
-          }else{
-            prods.push({name,price,photo});
-          }
-          saveData("prods",prods);
-          openTab("products");
+        function saveData(photo){
+          if(editingIndex!==null){data.prods[editingIndex]={name,price,photo};editingIndex=null;}
+          else{data.prods.push({name,price,photo});}
+          saveUserData(data);openTab("products");
         }
-        if(file){
-          let reader=new FileReader();
-          reader.onload=(e)=>saveDataNow(e.target.result);
-          reader.readAsDataURL(file);
-        }else{
-          saveDataNow(url);
-        }
+        if(file){let reader=new FileReader();reader.onload=e=>saveData(e.target.result);reader.readAsDataURL(file);}
+        else{saveData(url);}
       };
-      let prods=getData("prods");
-      $("#prodList").innerHTML=prods.map((p,i)=>`
+      $("#prodList").innerHTML=data.prods.map((p,i)=>`
         <div style="margin:6px 0;padding:6px;border:1px solid #333;border-radius:6px;display:flex;align-items:center;gap:10px;">
-          <img src="${p.photo}" width="50" height="50">
+          <img src="${p.photo}" width="50" height="50"> 
           <div style="flex:1">${p.name} - $${p.price}</div>
           <button onclick="editProduct(${i})">✏️ Edit</button>
           <button onclick="deleteProduct(${i})">❌ Delete</button>
         </div>
       `).join("");
-      window.editProduct=(i)=>{
-        let prods=getData("prods");
-        let p=prods[i];
-        $("#prodName").value=p.name;
-        $("#prodPrice").value=p.price;
-        $("#prodPhoto").value=p.photo.startsWith("data:")?"":p.photo;
-        $("#prodFile").value="";
-        editingIndex=i;
-      };
-      window.deleteProduct=(i)=>{
-        let prods=getData("prods");
-        prods.splice(i,1);
-        saveData("prods",prods);
-        openTab("products");
-      };
+      window.editProduct=(i)=>{let p=data.prods[i];$("#prodName").value=p.name;$("#prodPrice").value=p.price;$("#prodPhoto").value=p.photo.startsWith("data:")?"":p.photo;$("#prodFile").value="";editingIndex=i;};
+      window.deleteProduct=(i)=>{data.prods.splice(i,1);saveUserData(data);openTab("products");};
     }
 
     // ====== CUSTOMERS ======
     function renderCustomers(el){
+      let data=getUserData();
       el.innerHTML=`
         <h3>Save Customer Info</h3>
         <label>Name</label><input id="custName" type="text">
@@ -389,20 +344,29 @@
         <button id="saveCust">Save Customer</button>
         <ul id="custList"></ul>
       `;
-      $("#saveCust").onclick=()=>{
-        let custs=getData("custs");
-        custs.push({name:$("#custName").value,phone:$("#custPhone").value});
-        saveData("custs",custs);
-        openTab("customers");
-      };
-      let custs=getData("custs");
-      $("#custList").innerHTML=custs.map(c=>`<li>${c.name} (${c.phone})</li>`).join("");
+      $("#saveCust").onclick=()=>{data.custs.push({name:$("#custName").value,phone:$("#custPhone").value});saveUserData(data);openTab("customers");};
+      $("#custList").innerHTML=data.custs.map(c=>`<li>${c.name} (${c.phone})</li>`).join("");
     }
 
     // ====== SALES ======
     function renderSales(el){
-      let total=+getData("totalSale")||0;
-      el.innerHTML=`
-        <h3>Today's Sales</h3>
-        <p>Total: $${total}</p>
-        <button id
+      let data=getUserData();let total=data.totalSale||0;
+      el.innerHTML=`<h3>Today's Sales</h3><p>Total: $${total}</p><button id="closeDay">Close Day</button>`;
+      $("#closeDay").onclick=()=>{data.history.push({date:new Date().toLocaleString(),total});data.totalSale=0;data.bills=[];saveUserData(data);alert("Day closed. Data saved to history.");openTab("sales");};
+    }
+
+    // ====== HISTORY ======
+    function renderHistory(el){
+      let data=getUserData();
+      el.innerHTML=`<h3>Sales History</h3><ul>${data.history.map(h=>`<li>${h.date}: $${h.total}</li>`).join("")}</ul><label>Password to delete history</label><input id="histPass" type="password"><button id="delHist">Delete History</button>`;
+      $("#delHist").onclick=()=>{let users=getUsersObj();let user=users[getCurrentUser()];if($("#histPass").value===user.pin){data.history=[];saveUserData(data);openTab("history");}else{alert("Wrong PIN");}};
+    }
+
+    // ====== SUPPORT ======
+    function renderSupport(el){
+      el.innerHTML=`<h3>Customer Support</h3><p>Need help? Contact us on WhatsApp:</p><button id="btnSupport">📲 Chat on WhatsApp</button>`;
+      $("#btnSupport").onclick=()=>{window.open("https://wa.me/923160045195","_blank");};
+    }
+  </script>
+</body>
+</html>
