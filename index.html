@@ -1,87 +1,24 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Salon Manager</title>
-<style>
-body{margin:0;font-family:sans-serif;background:#0b1220;color:#e5e7eb;}
-header{display:flex;align-items:center;gap:10px;padding:10px 16px;background:#111;}
-header h1{margin:0;font-size:18px;font-weight:700}
-.pill{margin-left:auto;padding:4px 10px;background:#7c3aed;border-radius:999px;font-size:12px}
-.app{max-width:700px;margin:30px auto;padding:16px}
-.card{background:#1e293b;padding:20px;border-radius:14px}
-.tabs{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
-.tab{flex:1;padding:10px;border-radius:8px;text-align:center;cursor:pointer;background:#334155}
-.tab.active{background:#7c3aed;color:#fff}
-.hidden{display:none}
-label{font-size:12px;display:block;margin:6px 0}
-input{width:100%;padding:10px;border-radius:8px;border:1px solid:#334155;background:#0f172a;color:#fff}
-button{margin-top:8px;padding:8px 12px;border:none;border-radius:8px;background:#7c3aed;color:#fff;font-weight:700;cursor:pointer}
-ul{margin-top:10px;padding-left:18px}
-img{border-radius:6px;max-width:100%}
-.offer-item{display:flex;align-items:center;gap:10px;margin-bottom:15px;padding:10px;background:#2d3748;border-radius:8px;}
-.offer-photo{width:60px;height:60px;object-fit:cover;border-radius:8px;}
-.offer-info{flex:1;}
-.offer-actions{display:flex;gap:5px;}
-.btn-whatsapp{background:#25D366;color:white;}
-.photo-preview{width:100px;height:100px;object-fit:cover;border-radius:8px;margin:10px 0;}
-.customer-selector{max-height:200px;overflow-y:auto;margin:10px 0;padding:10px;background:#2d3748;border-radius:8px;}
-.bill-item{margin-bottom:15px;padding:10px;background:#2d3748;border-radius:8px;}
-.appointment-item{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding:10px;background:#2d3748;border-radius:8px;}
-.small{font-size:12px;color:#9aa6bb}
-.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:18px;background:#7c3aed;color:#fff;padding:8px 12px;border-radius:8px;opacity:0;transition:.25s;z-index:999}
-.toast.show{opacity:1;bottom:34px}
-.feed{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-top:12px}
-.item-card{background:#0f1724;padding:10px;border-radius:8px}
-</style>
-</head>
-<body>
-<header>
-<div>💈</div>
-<h1>Salon Manager By Salamat Ali</h1>
-<div class="pill" id="statusPill">Closed</div>
-</header>
-<div class="app">
-<section id="auth" class="card">
-<div class="tabs">
-<div class="tab active" data-auth="login">Login</div>
-<div class="tab" data-auth="register">Register</div>
-<div class="tab" data-auth="forgot">Forgot</div>
-</div>
-<div id="loginPane">
-<label>Username</label><input id="loginUser" type="text" />
-<label>Password</label><input id="loginPass" type="password" />
-<button id="btnLogin">Login</button>
-</div>
-<div id="registerPane" class="hidden">
-<label>Username</label><input id="regUser" type="text" />
-<label>Password</label><input id="regPass" type="password" />
-<label>Owner PIN</label><input id="regPin" type="password" maxlength="6" />
-<button id="btnRegister">Create Account</button>
-</div>
-<div id="forgotPane" class="hidden">
-<label>Username</label><input id="forgotUser" type="text" />
-<label>Owner PIN</label><input id="forgotPin" type="password" maxlength="6" />
-<button id="btnForgot">Recover Account</button>
-</div>
-</section>
-
-<section id="dashboard" class="card hidden">
-<div class="tabs" id="mainTabs"></div>
-<div id="tabContent"></div>
-<button id="btnLogout">Logout</button>
-</section>
-</div>
-
-<div id="toast" class="toast"></div>
-
-<!-- Firebase SDK -->
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Salon Manager</title>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<style>body{margin:0;font-family:sans-serif;background:#0b1220;color:#e5e7eb}header{display:flex;align-items:center;gap:10px;padding:10px 16px;background:#111}h1{margin:0;font-size:18px}.pill{margin-left:auto;padding:4px 10px;background:#7c3aed;border-radius:999px;font-size:12px}.app{max-width:700px;margin:30px auto;padding:16px}.card{background:#1e293b;padding:20px;border-radius:14px}.tabs{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}.tab{flex:1;padding:10px;border-radius:8px;text-align:center;cursor:pointer;background:#334155}.tab.active{background:#7c3aed;color:#fff}.hidden{display:none}label{font-size:12px;display:block;margin:6px 0}input{width:100%;padding:10px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:#fff}button{margin-top:8px;padding:8px 12px;border:none;border-radius:8px;background:#7c3aed;color:#fff;font-weight:700;cursor:pointer}ul{margin-top:10px;padding-left:18px}.small{font-size:12px;color:#9aa6bb}.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:18px;background:#7c3aed;color:#fff;padding:8px 12px;border-radius:8px;opacity:0;transition:.25s;z-index:999}.toast.show{opacity:1;bottom:34px}</style>
+</head>
+<body>
+<header><div>💈</div><h1>Salon Manager By Salamat Ali</h1><div class="pill" id="statusPill">Closed</div></header>
+<div class="app">
+<section id="auth" class="card"><div class="tabs">
+<div class="tab active" data-auth="login">Login</div><div class="tab" data-auth="register">Register</div><div class="tab" data-auth="forgot">Forgot</div></div>
+<div id="loginPane"><label>Username</label><input id="loginUser"><label>Password</label><input id="loginPass" type="password"><button id="btnLogin">Login</button></div>
+<div id="registerPane" class="hidden"><label>Username</label><input id="regUser"><label>Password</label><input id="regPass" type="password"><label>Owner PIN</label><input id="regPin" type="password" maxlength="6"><button id="btnRegister">Create Account</button></div>
+<div id="forgotPane" class="hidden"><label>Username</label><input id="forgotUser"><label>Owner PIN</label><input id="forgotPin" type="password" maxlength="6"><button id="btnForgot">Recover Account</button></div></section>
+
+<section id="dashboard" class="card hidden"><div class="tabs" id="mainTabs"></div><div id="tabContent"></div><button id="btnLogout">Logout</button></section></div>
+<div id="toast" class="toast"></div>
 
 <script>
-// Firebase Configuration - YEH USE KAREIN
+// Firebase Configuration
 const firebaseConfig = {
   apiKey: "AIzaSyBI00hCbWcEoMd3yCCXB7OGqYLsH7qKiE8",
   authDomain: "urban-punjabi-salon.firebaseapp.com",
@@ -105,125 +42,137 @@ const $ = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 function toast(m) { const t = $("#toast"); t.textContent = m; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 1700); }
 
-// Firebase Data Functions
-async function saveToFirebase(data) {
-    try {
-        const user = getCurrentUser();
-        await db.collection('users').doc(user).set({ 
-            data: data, 
-            lastUpdated: new Date().toISOString() 
-        }, { merge: true });
-        return true;
-    } catch (error) { 
-        console.error('Firebase save error:', error);
-        return false;
-    }
-}
-
-async function loadFromFirebase() {
-    try {
-        const user = getCurrentUser();
-        const doc = await db.collection('users').doc(user).get();
-        if (doc.exists) {
-            return doc.data().data;
-        }
-        return null;
-    } catch (error) { 
-        console.error('Firebase load error:', error);
-        return null;
-    }
-}
-
-// Local Storage Fallback
-function getLocalData() { 
-    const user = getCurrentUser();
-    return JSON.parse(localStorage.getItem(`salonData_${user}`) || '{"apts":[],"prods":[],"bills":[],"history":[],"totalSale":0,"offers":[]}'); 
-}
-
-function saveLocalData(data) { 
-    const user = getCurrentUser();
-    localStorage.setItem(`salonData_${user}`, JSON.stringify(data)); 
-}
-
-// Combined Data Functions
-async function getUserData() {
-    // Pehle Firebase se try karein
-    const firebaseData = await loadFromFirebase();
-    if (firebaseData) {
-        saveLocalData(firebaseData); // Local backup
-        return firebaseData;
-    }
-    
-    // Agar Firebase fail ho to local storage use karein
-    return getLocalData();
-}
-
-async function saveUserData(data) {
-    // Local storage mein immediately save karein
-    saveLocalData(data);
-    
-    // Firebase mein bhi save karein (background mein)
-    const firebaseSuccess = await saveToFirebase(data);
-    if (!firebaseSuccess) {
-        toast('Data saved locally (offline)');
-    }
-}
-
-// Authentication Functions
+// Simple Authentication (Firebase + Local Storage Backup)
 async function registerUser(username, password, pin) {
     try {
-        // Check if user already exists
-        const doc = await db.collection('users').doc(username).get();
+        // Try Firebase first
+        const userRef = db.collection('users').doc(username);
+        const doc = await userRef.get();
+        
         if (doc.exists) {
-            return { success: false, message: "Username already exists" };
+            return { success: false, message: "Username exists" };
         }
         
-        // Create new user
         const userData = {
             password: password,
             pin: pin,
             data: { apts: [], prods: [], bills: [], history: [], totalSale: 0, offers: [] },
-            createdAt: new Date().toISOString()
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
         };
         
-        await db.collection('users').doc(username).set(userData);
-        return { success: true, message: "Account created successfully!" };
+        await userRef.set(userData);
+        return { success: true, message: "Account created" };
     } catch (error) {
-        console.error('Registration error:', error);
-        return { success: false, message: "Registration failed. Try again." };
+        console.log('Firebase failed, using local storage');
+        // Fallback to local storage
+        const users = JSON.parse(localStorage.getItem('salonUsers') || '{}');
+        if (users[username]) {
+            return { success: false, message: "Username exists" };
+        }
+        users[username] = { password, pin, data: { apts: [], prods: [], bills: [], history: [], totalSale: 0, offers: [] } };
+        localStorage.setItem('salonUsers', JSON.stringify(users));
+        return { success: true, message: "Account created (local)" };
     }
 }
 
 async function loginUser(username, password) {
     try {
-        const doc = await db.collection('users').doc(username).get();
-        if (doc.exists && doc.data().password === password) {
-            return { success: true };
+        // Try Firebase first
+        const userRef = db.collection('users').doc(username);
+        const doc = await userRef.get();
+        
+        if (doc.exists) {
+            const userData = doc.data();
+            if (userData.password === password) {
+                return { success: true, user: username };
+            }
         }
-        return { success: false, message: "Invalid username or password" };
+        
+        // Fallback to local storage
+        const users = JSON.parse(localStorage.getItem('salonUsers') || '{}');
+        if (users[username] && users[username].password === password) {
+            return { success: true, user: username };
+        }
+        
+        return { success: false, message: "Invalid login" };
     } catch (error) {
-        console.error('Login error:', error);
-        return { success: false, message: "Login failed. Try again." };
+        // Fallback to local storage
+        const users = JSON.parse(localStorage.getItem('salonUsers') || '{}');
+        if (users[username] && users[username].password === password) {
+            return { success: true, user: username };
+        }
+        return { success: false, message: "Invalid login" };
     }
 }
 
 async function recoverPassword(username, pin) {
     try {
-        const doc = await db.collection('users').doc(username).get();
-        if (doc.exists && doc.data().pin === pin) {
-            return { success: true, password: doc.data().password };
+        // Try Firebase first
+        const userRef = db.collection('users').doc(username);
+        const doc = await userRef.get();
+        
+        if (doc.exists) {
+            const userData = doc.data();
+            if (userData.pin === pin) {
+                return { success: true, password: userData.password };
+            }
         }
-        return { success: false, message: "Invalid username or PIN" };
+        
+        // Fallback to local storage
+        const users = JSON.parse(localStorage.getItem('salonUsers') || '{}');
+        if (users[username] && users[username].pin === pin) {
+            return { success: true, password: users[username].password };
+        }
+        
+        return { success: false, message: "Wrong details" };
     } catch (error) {
-        return { success: false, message: "Recovery failed" };
+        const users = JSON.parse(localStorage.getItem('salonUsers') || '{}');
+        if (users[username] && users[username].pin === pin) {
+            return { success: true, password: users[username].password };
+        }
+        return { success: false, message: "Wrong details" };
+    }
+}
+
+// Data Management
+async function getUserData() {
+    const username = getCurrentUser();
+    try {
+        const doc = await db.collection('users').doc(username).get();
+        if (doc.exists) {
+            const userData = doc.data();
+            // Update local storage as backup
+            localStorage.setItem('salonData_' + username, JSON.stringify(userData.data));
+            return userData.data;
+        }
+    } catch (error) {
+        console.log('Firebase load failed, using local storage');
+    }
+    
+    // Fallback to local storage
+    const localData = localStorage.getItem('salonData_' + username);
+    return localData ? JSON.parse(localData) : { apts: [], prods: [], bills: [], history: [], totalSale: 0, offers: [] };
+}
+
+async function saveUserData(data) {
+    const username = getCurrentUser();
+    
+    // Save to local storage immediately
+    localStorage.setItem('salonData_' + username, JSON.stringify(data));
+    
+    // Try to save to Firebase
+    try {
+        await db.collection('users').doc(username).update({
+            data: data,
+            lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+        });
+    } catch (error) {
+        console.log('Firebase save failed, data saved locally');
     }
 }
 
 function getCurrentUser() { return localStorage.getItem("currentUser") || ""; }
 function setCurrentUser(u) { u ? localStorage.setItem("currentUser", u) : localStorage.removeItem("currentUser"); }
-
-// Rest of your existing code (tabs, rendering functions) yahan paste karein
-// [Yahan aapka original code ka remaining part ayega]
 
 // Auth Tabs
 $$('.tab[data-auth]').forEach(tab => tab.addEventListener('click', () => {
@@ -237,22 +186,22 @@ $$('.tab[data-auth]').forEach(tab => tab.addEventListener('click', () => {
 // Registration
 $('#btnRegister').addEventListener('click', async () => {
     const u = $('#regUser').value.trim(), p = $('#regPass').value, pin = $('#regPin').value.trim();
-    if (!u || !p || !pin) { toast("Please fill all fields"); return; }
+    if (!u || !p || !pin) { toast("Fill all fields"); return; }
     
     const result = await registerUser(u, p, pin);
     toast(result.message);
     
     if (result.success) {
         $('#regUser').value = $('#regPass').value = $('#regPin').value = "";
-        document.querySelector('[data-auth="login"]').click();
+        $('[data-auth="login"]').click();
     }
 });
 
 // Login
 $('#btnLogin').addEventListener('click', async () => {
     const u = $('#loginUser').value.trim(), p = $('#loginPass').value;
-    
     const result = await loginUser(u, p);
+    
     if (result.success) {
         setCurrentUser(u);
         startDashboard();
@@ -264,10 +213,10 @@ $('#btnLogin').addEventListener('click', async () => {
 // Forgot Password
 $('#btnForgot').addEventListener('click', async () => {
     const u = $('#forgotUser').value.trim(), pin = $('#forgotPin').value.trim();
-    
     const result = await recoverPassword(u, pin);
+    
     if (result.success) {
-        toast("Your password: " + result.password);
+        toast("Password: " + result.password);
     } else {
         toast(result.message || "Wrong details");
     }
@@ -282,21 +231,21 @@ $('#btnLogout').addEventListener('click', () => {
     toast('Logged out');
 });
 
+// Tabs Configuration
 const tabs = [
-    {id:"appointments",label:"Appointments"},
-    {id:"billing",label:"Billing"},
-    {id:"products",label:"Products & Services"},
-    {id:"offers",label:"Offers"},
-    {id:"sales",label:"Sales"},
-    {id:"history",label:"History"},
-    {id:"support",label:"Support"}
+    { id: "appointments", label: "Appointments" },
+    { id: "billing", label: "Billing" },
+    { id: "products", label: "Products" },
+    { id: "offers", label: "Offers" },
+    { id: "sales", label: "Sales" },
+    { id: "history", label: "History" },
+    { id: "support", label: "Support" }
 ];
 
 async function startDashboard() {
     $('#auth').classList.add("hidden");
     $('#dashboard').classList.remove("hidden");
     $('#statusPill').textContent = "Open";
-    checkExpiredOffers();
     initTabs();
 }
 
@@ -322,54 +271,157 @@ async function openTab(id) {
     
     const data = await getUserData();
     
-    switch(id) {
+    switch (id) {
         case "appointments": renderAppointments(box, data); break;
         case "billing": renderBilling(box, data); break;
         case "products": renderProducts(box, data); break;
-        case "offers": checkExpiredOffers(); renderOffers(box, data); break;
+        case "offers": renderOffers(box, data); break;
         case "sales": renderSales(box, data); break;
         case "history": renderHistory(box, data); break;
         case "support": renderSupport(box); break;
     }
 }
 
-// [Yahan aapke saare render functions rahenge - appointments, billing, products, etc.]
-
+// Tab Render Functions (simplified versions)
 function renderAppointments(el, data) {
-    if(!data.apts) data.apts = [];
-    el.innerHTML = `<h3>Book Appointment</h3><label>Name</label><input id="aptName" type="text"><label>Service</label><input id="aptService" type="text"><label>Date & Time</label><input id="aptTime" type="datetime-local"><button id="saveApt">Save</button><ul id="aptList"></ul>`;
-    
+    el.innerHTML = `<h3>Book Appointment</h3><label>Name</label><input id="aptName"><label>Service</label><input id="aptService"><label>Date & Time</label><input id="aptTime" type="datetime-local"><button id="saveApt">Save</button><ul id="aptList"></ul>`;
     $("#saveApt").onclick = async () => {
         const name = $("#aptName").value.trim(), service = $("#aptService").value.trim(), time = $("#aptTime").value;
-        if(!name || !service || !time) { toast("Please fill all fields"); return; }
-        data.apts.push({name, service, time});
+        if (!name || !service || !time) { toast("Fill all fields"); return; }
+        data.apts.push({ name, service, time });
         await saveUserData(data);
         openTab("appointments");
         toast('Appointment saved');
     };
-    
-    $("#aptList").innerHTML = data.apts.length > 0 ? 
-        data.apts.map((a,i) => `<li class="appointment-item"><div><b>${a.name}</b><div class="small">${a.service} at ${a.time}</div></div><button onclick="completeApt(${i})">Complete</button></li>`).join("") 
-        : "<li class='small'>No appointments booked yet</li>";
+    $("#aptList").innerHTML = data.apts.length > 0 ? data.apts.map((a, i) => 
+        `<li class="appointment-item"><div><b>${a.name}</b><div class="small">${a.service} at ${a.time}</div></div><button onclick="completeApt(${i})">Complete</button></li>`
+    ).join("") : "<li class='small'>No appointments</li>";
 }
 
-// [Baki ke render functions yahan add karein...]
+function renderBilling(el, data) {
+    el.innerHTML = `<h3>Walk-in Billing</h3><label>Customer Name</label><input id="billName"><label>Phone</label><input id="billPhone"><h4>Select Products</h4><div id="billProducts">${
+        data.prods.length > 0 ? data.prods.map((p, i) => 
+            `<div><input type="checkbox" class="billProd" data-price="${p.price}" data-name="${p.name}">${p.name} - $${p.price}</div>`
+        ).join("") : "<p class='small'>No products added</p>"
+    }</div><p><b>Total: $<span id="billTotal">0</span></b></p><button id="saveBill">Save Bill</button><h3>Recent Bills</h3><div id="billList"></div>`;
+    
+    function updateTotal() { 
+        let total = 0; 
+        $$('.billProd:checked').forEach(c => total += +c.dataset.price); 
+        $('#billTotal').textContent = total; 
+    }
+    $$('.billProd').forEach(c => c.addEventListener('change', updateTotal));
+    
+    $("#saveBill").onclick = async () => {
+        let selected = [], total = 0;
+        $$('.billProd:checked').forEach(c => { selected.push({ name: c.dataset.name, price: +c.dataset.price }); total += +c.dataset.price; });
+        if (!selected.length) { toast("Select items"); return; }
+        const name = $("#billName").value.trim(), phone = $("#billPhone").value.trim();
+        if (!name) { toast("Enter name"); return; }
+        data.bills.push({ name, phone, items: selected, amt: total, time: new Date().toLocaleString() });
+        data.totalSale = (data.totalSale || 0) + total;
+        await saveUserData(data);
+        openTab("billing");
+        toast('Bill saved');
+    };
+    
+    $("#billList").innerHTML = data.bills.length > 0 ? data.bills.map((b, i) => 
+        `<div class="bill-item"><b>${b.name}</b> - $${b.amt}<br><small>${b.time}</small><br>
+         <button onclick="printReceipt(${i})">🖨 Print</button> <button onclick="sendWhatsApp(${i})">📲 WhatsApp</button></div>`
+    ).join("") : "<p class='small'>No bills</p>";
+}
 
-window.completeApt = async function(i) {
+// Global Functions
+window.printReceipt = async (index) => {
     const data = await getUserData();
-    data.apts.splice(i,1);
+    const b = data.bills[index];
+    if (!b) return;
+    const w = window.open("", "", "width=400,height=600");
+    w.document.write(`<h2>Salon Receipt</h2><p><b>Customer:</b> ${b.name}</p><ul>${
+        b.items.map(it => `<li>${it.name} - $${it.price}</li>`).join("")
+    }</ul><p><b>Total:</b> $${b.amt}</p><p>Thank you!</p>`);
+    w.print();
+    w.close();
+};
+
+window.sendWhatsApp = async (index) => {
+    const data = await getUserData();
+    const b = data.bills[index];
+    if (!b.phone) { toast("No phone"); return; }
+    const itemsText = b.items.map(it => `${it.name} - $${it.price}`).join("%0a");
+    const msg = `Hello ${b.name},%0aYour bill:%0a${itemsText}%0aTotal: $${b.amt}%0aThank you!`;
+    window.open(`https://wa.me/${b.phone}?text=${msg}`, "_blank");
+};
+
+window.completeApt = async (i) => {
+    const data = await getUserData();
+    data.apts.splice(i, 1);
     await saveUserData(data);
     openTab('appointments');
     toast('Completed');
+};
+
+// Other basic render functions
+function renderProducts(el, data) {
+    el.innerHTML = `<h3>Products & Services</h3><label>Name</label><input id="prodName"><label>Price</label><input id="prodPrice" type="number"><button id="saveProd">Save Product</button><ul id="prodList"></ul>`;
+    $("#saveProd").onclick = async () => {
+        const name = $("#prodName").value.trim(), price = +$("#prodPrice").value;
+        if (!name || !price) { toast("Enter name and price"); return; }
+        data.prods.push({ name, price });
+        await saveUserData(data);
+        openTab("products");
+    };
+    $("#prodList").innerHTML = data.prods.length > 0 ? data.prods.map((p, i) => 
+        `<li>${p.name} - $${p.price} <button onclick="deleteProduct(${i})">Delete</button></li>`
+    ).join("") : "<li class='small'>No products</li>";
 }
 
-// [Aapke saare original functions yahan rahenge]
+window.deleteProduct = async (i) => {
+    const data = await getUserData();
+    data.prods.splice(i, 1);
+    await saveUserData(data);
+    openTab("products");
+};
 
-window.onload = () => {
-    if(getCurrentUser()) {
-        startDashboard();
-    }
+function renderOffers(el, data) {
+    el.innerHTML = `<h3>Offers</h3><label>Title</label><input id="offerTitle"><label>Price</label><input id="offerPrice" type="number"><button id="saveOffer">Save Offer</button><ul id="offerList"></ul>`;
+    $("#saveOffer").onclick = async () => {
+        const title = $("#offerTitle").value.trim(), price = +$("#offerPrice").value;
+        if (!title || !price) { toast("Enter title & price"); return; }
+        data.offers.push({ title, price });
+        await saveUserData(data);
+        openTab("offers");
+    };
+    $("#offerList").innerHTML = data.offers.length > 0 ? data.offers.map((o, i) => 
+        `<li>${o.title} - $${o.price}</li>`
+    ).join("") : "<li class='small'>No offers</li>";
 }
+
+function renderSales(el, data) {
+    el.innerHTML = `<h3>Sales</h3><p>Total: $${data.totalSale || 0}</p><button id="closeDay">Close Day</button>`;
+    $("#closeDay").onclick = async () => {
+        if (confirm("Close day and reset sales?")) {
+            data.history.push({ date: new Date().toLocaleString(), total: data.totalSale });
+            data.totalSale = 0;
+            data.bills = [];
+            await saveUserData(data);
+            toast('Day closed');
+            openTab('sales');
+        }
+    };
+}
+
+function renderHistory(el, data) {
+    el.innerHTML = `<h3>Sales History</h3><ul>${data.history.map(h => 
+        `<li>${h.date}: $${h.total}</li>`
+    ).join("")}</ul>`;
+}
+
+function renderSupport(el) {
+    el.innerHTML = `<h3>Support</h3><button onclick="window.open('https://wa.me/923160045195','_blank')">📲 WhatsApp Support</button>`;
+}
+
+window.onload = () => { if (getCurrentUser()) startDashboard(); };
 </script>
 </body>
-  </html>
+</html>
