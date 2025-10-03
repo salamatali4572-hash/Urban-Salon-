@@ -1,0 +1,12 @@
+{
+  "background_color": "#5652f3",
+  "dir": "ltr",
+  "display": "standalone",
+  "name": "Urban-Punjabi-Saloon",
+  "orientation": "portrait",
+  "scope": "/",
+  "short_name": "Urban-Saloon",
+  "start_url": "/",
+  "theme_color": "#f41b1b",
+  "description": "Salon Management System for appointment scheduling, client tracking, and service management."
+}
