@@ -1,0 +1,12 @@
+{
+  "background_color": "#5e36df",
+  "dir": "ltr",
+  "display": "standalone",
+  "name": "UPSM",
+  "orientation": "portrait",
+  "scope": "/",
+  "short_name": "UPSM",
+  "start_url": "/",
+  "theme_color": "#000000",
+  "description": "Salon Management System for appointment scheduling, client tracking, and service management."
+}
