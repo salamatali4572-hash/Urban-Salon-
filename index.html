@@ -77,20 +77,19 @@ img{border-radius:6px;max-width:100%}
 
 <div id="toast" class="toast"></div>
 
-<!-- Firebase Scripts -->
 <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js"></script>
 
 <script>
-// ==== Firebase Config ====
+// ==== Firebase Config (UPDATED) ====
 const firebaseConfig = {
-  apiKey: "AIzaSyBI00hCbWcEoMd3yCCXB7OGqYLsH7qKiE8",
-  authDomain: "urban-punjabi-salon.firebaseapp.com",
-  projectId: "urban-punjabi-salon",
-  storageBucket: "urban-punjabi-salon.firebasestorage.app",
-  messagingSenderId: "912792635283",
-  appId: "1:912792635283:web:fc586e8ebd9f19ea09ca66",
-  measurementId: "G-F50HX8N6YF"
+  apiKey: "AIzaSyBBFGIwiuzXNFrJ7kRe1rNauKqolIVMVI4",
+  authDomain: "upsm-107f6.firebaseapp.com",
+  projectId: "upsm-107f6",
+  storageBucket: "upsm-107f6.firebasestorage.app",
+  messagingSenderId: "359645965485",
+  appId: "1:359645965485:web:a8358f7316cc433b182a24",
+  measurementId: "G-QYS5PB1C6Y"
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
@@ -161,6 +160,31 @@ $('#btnLogout').addEventListener('click',()=>{
   setCurrentUser(""); $('#dashboard').classList.add("hidden"); $('#auth').classList.remove("hidden"); $('#statusPill').textContent="Closed"; toast('Logged out');
 });
 
+// ================== Offers Logic (ADDED) ==================
+async function checkExpiredOffers() {
+  const userData = await getUserData();
+  if (!userData) return;
+
+  const now = new Date().toISOString();
+  let updated = false;
+
+  // Filter out expired offers
+  const activeOffers = userData.offers.filter(offer => {
+    // If 'expiry' is present and the offer is past its expiry date (using string comparison for ISO dates)
+    if (offer.expiry && offer.expiry < now) {
+      updated = true;
+      return false; // Exclude the expired offer
+    }
+    return true; // Keep active offers and offers without an expiry date
+  });
+
+  if (updated) {
+    userData.offers = activeOffers;
+    await saveUserData(userData);
+    toast("Expired offers have been removed.");
+  }
+}
+
 // ================== Dashboard Tabs ==================
 const tabs=[{id:"appointments",label:"Appointments"},{id:"billing",label:"Billing"},{id:"products",label:"Products & Services"},{id:"offers",label:"Offers"},{id:"sales",label:"Sales"},{id:"history",label:"History"},{id:"support",label:"Support"}];
 
@@ -177,6 +201,19 @@ async function openTab(id){ $$("#mainTabs .tab").forEach(b=>b.classList.remove("
 }}
 /* ---- Rest of your render functions remain same ---- 
    Only difference: they use getUserData() and saveUserData() which now connect to Firebase */
+
+// --- Placeholder/Mock Render Functions (MUST BE COMPLETED BY YOU) ---
+// Note: You must write the actual logic for these functions to make the app fully functional.
+// I'm adding basic placeholders so the code runs without errors.
+function renderAppointments(box) { box.innerHTML = '<div class="card"><h2>Appointments</h2><p>Appointment management UI goes here.</p></div>'; }
+function renderBilling(box) { box.innerHTML = '<div class="card"><h2>Billing</h2><p>Billing and invoice generation UI goes here.</p></div>'; }
+function renderProducts(box) { box.innerHTML = '<div class="card"><h2>Products & Services</h2><p>Product/Service management UI goes here.</p></div>'; }
+function renderOffers(box) { box.innerHTML = '<div class="card"><h2>Offers & Promotions</h2><p>Offers display and creation UI goes here.</p></div>'; }
+function renderSales(box) { box.innerHTML = '<div class="card"><h2>Sales Reporting</h2><p>Sales summary and reports UI goes here.</p></div>'; }
+function renderHistory(box) { box.innerHTML = '<div class="card"><h2>Customer History</h2><p>Transaction and service history UI goes here.</p></div>'; }
+function renderSupport(box) { box.innerHTML = '<div class="card"><h2>Support</h2><p>Contact and help information goes here.</p></div>'; }
+// --------------------------------------------------------------------
+
 </script>
 </body>
 </html>
