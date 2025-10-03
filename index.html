@@ -1,219 +1,222 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Salon Manager</title>
-<style>
-/* --- Same CSS as your original --- */
-body{margin:0;font-family:sans-serif;background:#0b1220;color:#e5e7eb;}
-header{display:flex;align-items:center;gap:10px;padding:10px 16px;background:#111;}
-header h1{margin:0;font-size:18px;font-weight:700}
-.pill{margin-left:auto;padding:4px 10px;background:#7c3aed;border-radius:999px;font-size:12px}
-.app{max-width:700px;margin:30px auto;padding:16px}
-.card{background:#1e293b;padding:20px;border-radius:14px}
-.tabs{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
-.tab{flex:1;padding:10px;border-radius:8px;text-align:center;cursor:pointer;background:#334155}
-.tab.active{background:#7c3aed;color:#fff}
-.hidden{display:none}
-label{font-size:12px;display:block;margin:6px 0}
-input{width:100%;padding:10px;border-radius:8px;border:1px solid:#334155;background:#0f172a;color:#fff}
-button{margin-top:8px;padding:8px 12px;border:none;border-radius:8px;background:#7c3aed;color:#fff;font-weight:700;cursor:pointer}
-ul{margin-top:10px;padding-left:18px}
-img{border-radius:6px;max-width:100%}
-.offer-item{display:flex;align-items:center;gap:10px;margin-bottom:15px;padding:10px;background:#2d3748;border-radius:8px;}
-.offer-photo{width:60px;height:60px;object-fit:cover;border-radius:8px;}
-.offer-info{flex:1;}
-.offer-actions{display:flex;gap:5px;}
-.btn-whatsapp{background:#25D366;color:white;}
-.photo-preview{width:100px;height:100px;object-fit:cover;border-radius:8px;margin:10px 0;}
-.customer-selector{max-height:200px;overflow-y:auto;margin:10px 0;padding:10px;background:#2d3748;border-radius:8px;}
-.bill-item{margin-bottom:15px;padding:10px;background:#2d3748;border-radius:8px;}
-.appointment-item{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding:10px;background:#2d3748;border-radius:8px;}
-.small{font-size:12px;color:#9aa6bb}
-.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:18px;background:#7c3aed;color:#fff;padding:8px 12px;border-radius:8px;opacity:0;transition:.25s;z-index:999}
-.toast.show{opacity:1;bottom:34px}
-.feed{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-top:12px}
-.item-card{background:#0f1724;padding:10px;border-radius:8px}
-</style>
+  <meta charset="UTF-8">
+  <title>Salon Management System</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 0; }
+    header { background: #333; color: #fff; padding: 15px; text-align: center; }
+    nav { background: #444; padding: 10px; display: flex; justify-content: space-around; }
+    nav button { padding: 10px; background: #666; border: none; color: white; cursor: pointer; }
+    nav button:hover { background: #888; }
+    section { padding: 20px; display: none; }
+    section.active { display: block; background: white; margin: 15px; border-radius: 8px; box-shadow: 0 0 10px #aaa; }
+    input, select { padding: 8px; margin: 5px; width: 250px; }
+    button.action { padding: 8px 15px; margin: 5px; cursor: pointer; }
+    table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+    th, td { border: 1px solid #ddd; padding: 10px; text-align: center; }
+    th { background: #f0f0f0; }
+  </style>
 </head>
 <body>
+
 <header>
-<div>💈</div>
-<h1>Salon Manager By Salamat Ali</h1>
-<div class="pill" id="statusPill">Closed</div>
+  <h1>Salon Management System</h1>
 </header>
-<div class="app">
-<section id="auth" class="card">
-<div class="tabs">
-<div class="tab active" data-auth="login">Login</div>
-<div class="tab" data-auth="register">Register</div>
-<div class="tab" data-auth="forgot">Forgot</div>
-</div>
-<div id="loginPane">
-<label>Username</label><input id="loginUser" type="text" />
-<label>Password</label><input id="loginPass" type="password" />
-<button id="btnLogin">Login</button>
-</div>
-<div id="registerPane" class="hidden">
-<label>Username</label><input id="regUser" type="text" />
-<label>Password</label><input id="regPass" type="password" />
-<label>Owner PIN</label><input id="regPin" type="password" maxlength="6" />
-<button id="btnRegister">Create Account</button>
-</div>
-<div id="forgotPane" class="hidden">
-<label>Username</label><input id="forgotUser" type="text" />
-<label>Owner PIN</label><input id="forgotPin" type="password" maxlength="6" />
-<button id="btnForgot">Recover Account</button>
-</div>
+
+<nav>
+  <button onclick="showTab('auth')">Login</button>
+  <button onclick="showTab('appointments')">Appointments</button>
+  <button onclick="showTab('products')">Products</button>
+  <button onclick="showTab('billing')">Billing</button>
+  <button onclick="showTab('offers')">Offers</button>
+  <button onclick="showTab('sales')">Sales</button>
+  <button onclick="showTab('history')">History</button>
+</nav>
+
+<!-- Authentication -->
+<section id="auth" class="active">
+  <h2>Authentication</h2>
+  <input id="regUser" placeholder="Username"><br>
+  <input id="regPass" type="password" placeholder="Password"><br>
+  <input id="regPin" placeholder="Owner Pin"><br>
+  <button class="action" onclick="registerUser()">Register</button><br><br>
+
+  <input id="logUser" placeholder="Username"><br>
+  <input id="logPass" type="password" placeholder="Password"><br>
+  <button class="action" onclick="loginUser()">Login</button><br><br>
+
+  <h3>Forgot Password</h3>
+  <input id="fpUser" placeholder="Username"><br>
+  <input id="fpPin" placeholder="Owner Pin"><br>
+  <button class="action" onclick="forgotPassword()">Reset Password</button>
 </section>
 
-<section id="dashboard" class="card hidden">
-<div class="tabs" id="mainTabs"></div>
-<div id="tabContent"></div>
-<button id="btnLogout">Logout</button>
+<!-- Appointments -->
+<section id="appointments">
+  <h2>Appointments</h2>
+  <input id="custName" placeholder="Customer Name">
+  <input id="service" placeholder="Service">
+  <input id="apptDate" type="date">
+  <input id="apptTime" type="time">
+  <button class="action" onclick="addAppointment()">Add</button>
+  <table id="apptTable">
+    <tr><th>Customer</th><th>Service</th><th>Date</th><th>Time</th><th>Action</th></tr>
+  </table>
 </section>
-</div>
 
-<div id="toast" class="toast"></div>
+<!-- Products -->
+<section id="products">
+  <h2>Products & Services</h2>
+  <input id="prodName" placeholder="Product/Service Name">
+  <input id="prodPrice" type="number" placeholder="Price">
+  <button class="action" onclick="addProduct()">Add</button>
+  <table id="prodTable">
+    <tr><th>Name</th><th>Price</th><th>Action</th></tr>
+  </table>
+</section>
 
-<script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js"></script>
+<!-- Billing -->
+<section id="billing">
+  <h2>Billing</h2>
+  <select id="billProd"></select>
+  <input id="billQty" type="number" placeholder="Qty">
+  <button class="action" onclick="addBillItem()">Add Item</button>
+  <table id="billTable">
+    <tr><th>Product</th><th>Qty</th><th>Price</th><th>Total</th></tr>
+  </table>
+  <h3>Total: <span id="billTotal">0</span></h3>
+  <button class="action" onclick="saveBill()">Save Bill</button>
+</section>
 
-<script>
-// ==== Firebase Config (UPDATED) ====
-const firebaseConfig = {
-  apiKey: "AIzaSyBBFGIwiuzXNFrJ7kRe1rNauKqolIVMVI4",
-  authDomain: "upsm-107f6.firebaseapp.com",
-  projectId: "upsm-107f6",
-  storageBucket: "upsm-107f6.firebasestorage.app",
-  messagingSenderId: "359645965485",
-  appId: "1:359645965485:web:a8358f7316cc433b182a24",
-  measurementId: "G-QYS5PB1C6Y"
-};
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
+<!-- Offers -->
+<section id="offers">
+  <h2>Offers</h2>
+  <input id="offerTitle" placeholder="Offer Title">
+  <input id="offerDisc" type="number" placeholder="Discount %">
+  <button class="action" onclick="addOffer()">Add</button>
+  <table id="offerTable">
+    <tr><th>Title</th><th>Discount</th><th>Action</th></tr>
+  </table>
+</section>
 
-// ================== Helper Functions ==================
-const $=(s,e=document)=>e.querySelector(s),$$=(s,e=document)=>Array.from((e||document).querySelectorAll(s));
-function toast(m){const t=$("#toast");t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1700);}
-function getCurrentUser(){ return localStorage.getItem("currentUser")||""; }
-function setCurrentUser(u){ if(u) localStorage.setItem("currentUser",u); else localStorage.removeItem("currentUser"); }
+<!-- Sales -->
+<section id="sales">
+  <h2>Sales Report</h2>
+  <h3>Total Sales: <span id="totalSales">0</span></h3>
+</section>
 
-// ---- Firebase Replacements ----
-async function getUsersObj(){
-  const snap = await db.collection("users").get();
-  let users = {};
-  snap.forEach(doc => users[doc.id] = doc.data());
-  return users;
-}
-async function saveUsersObj(users){
-  for (const [u,data] of Object.entries(users)) {
-    await db.collection("users").doc(u).set(data);
+<!-- History -->
+<section id="history">
+  <h2>History</h2>
+  <table id="histTable">
+    <tr><th>Customer</th><th>Items</th><th>Total</th><th>Date</th></tr>
+  </table>
+</section>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+  import { getFirestore, doc, setDoc, getDoc, updateDoc, arrayUnion, collection, getDocs } 
+    from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBBFGIwiuzXNFrJ7kRe1rNauKqolIVMVI4",
+    authDomain: "upsm-107f6.firebaseapp.com",
+    projectId: "upsm-107f6",
+    storageBucket: "upsm-107f6.firebasestorage.app",
+    messagingSenderId: "359645965485",
+    appId: "1:359645965485:web:a8358f7316cc433b182a24",
+    measurementId: "G-QYS5PB1C6Y"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  let currentUser = null;
+  let billItems = [];
+
+  // Navigation
+  window.showTab = function(id) {
+    document.querySelectorAll("section").forEach(sec => sec.classList.remove("active"));
+    document.getElementById(id).classList.add("active");
   }
-}
-async function getUserData(){
-  const cur=getCurrentUser(); if(!cur) return null;
-  const doc=await db.collection("users").doc(cur).get();
-  if(!doc.exists){ 
-    await db.collection("users").doc(cur).set({password:"",pin:"",data:{apts:[],prods:[],bills:[],history:[],totalSale:0,offers:[]}})
-    return {apts:[],prods:[],bills:[],history:[],totalSale:0,offers:[]};
+
+  // Register
+  window.registerUser = async function() {
+    let u = regUser.value, p = regPass.value, pin = regPin.value;
+    await setDoc(doc(db, "users", u), { password: p, pin: pin, appointments:[], products:[], bills:[], offers:[], totalSales:0, history:[] });
+    alert("Registered!");
   }
-  return doc.data().data;
-}
-async function saveUserData(data){
-  const cur=getCurrentUser(); if(!cur) return;
-  await db.collection("users").doc(cur).update({data});
-}
 
-// ================== Auth ==================
-$$('.tab[data-auth]').forEach(tab=>tab.addEventListener('click',()=>{
-  $$('.tab[data-auth]').forEach(t=>t.classList.remove('active'));
-  tab.classList.add('active');
-  $('#loginPane').classList.toggle('hidden',tab.dataset.auth!=='login');
-  $('#registerPane').classList.toggle('hidden',tab.dataset.auth!=='register');
-  $('#forgotPane').classList.toggle('hidden',tab.dataset.auth!=='forgot');
-}));
-
-$('#btnRegister').addEventListener('click',async()=>{
-  const u=$('#regUser').value.trim(),p=$('#regPass').value,pin=$('#regPin').value.trim();
-  if(!u||!p||!pin){toast("Fill all fields");return;}
-  let users=await getUsersObj(); if(users[u]){toast("Username exists");return;}
-  await db.collection("users").doc(u).set({password:p,pin:pin,data:{apts:[],prods:[],bills:[],history:[],totalSale:0,offers:[]}});
-  toast("Account created — login now"); $('#regUser').value=$('#regPass').value=$('#regPin').value="";
-  document.querySelector('[data-auth="login"]').click();
-});
-
-$('#btnLogin').addEventListener('click',async()=>{
-  const u=$('#loginUser').value.trim(),p=$('#loginPass').value; 
-  let doc=await db.collection("users").doc(u).get();
-  if(doc.exists && doc.data().password===p){ setCurrentUser(u); startDashboard(); } else toast("Invalid login");
-});
-
-$('#btnForgot').addEventListener('click',async()=>{
-  const u=$('#forgotUser').value.trim(),pin=$('#forgotPin').value.trim(); 
-  let doc=await db.collection("users").doc(u).get();
-  if(doc.exists && doc.data().pin===pin) toast("Password: "+doc.data().password); else toast("Wrong details");
-});
-
-$('#btnLogout').addEventListener('click',()=>{
-  setCurrentUser(""); $('#dashboard').classList.add("hidden"); $('#auth').classList.remove("hidden"); $('#statusPill').textContent="Closed"; toast('Logged out');
-});
-
-// ================== Offers Logic (ADDED) ==================
-async function checkExpiredOffers() {
-  const userData = await getUserData();
-  if (!userData) return;
-
-  const now = new Date().toISOString();
-  let updated = false;
-
-  // Filter out expired offers
-  const activeOffers = userData.offers.filter(offer => {
-    // If 'expiry' is present and the offer is past its expiry date (using string comparison for ISO dates)
-    if (offer.expiry && offer.expiry < now) {
-      updated = true;
-      return false; // Exclude the expired offer
-    }
-    return true; // Keep active offers and offers without an expiry date
-  });
-
-  if (updated) {
-    userData.offers = activeOffers;
-    await saveUserData(userData);
-    toast("Expired offers have been removed.");
+  // Login
+  window.loginUser = async function() {
+    let u = logUser.value, p = logPass.value;
+    let snap = await getDoc(doc(db, "users", u));
+    if(snap.exists() && snap.data().password === p){ currentUser = u; alert("Welcome "+u); }
+    else alert("Invalid login");
   }
-}
 
-// ================== Dashboard Tabs ==================
-const tabs=[{id:"appointments",label:"Appointments"},{id:"billing",label:"Billing"},{id:"products",label:"Products & Services"},{id:"offers",label:"Offers"},{id:"sales",label:"Sales"},{id:"history",label:"History"},{id:"support",label:"Support"}];
+  // Forgot Password
+  window.forgotPassword = async function(){
+    let u = fpUser.value, pin = fpPin.value;
+    let snap = await getDoc(doc(db,"users",u));
+    if(snap.exists() && snap.data().pin === pin) alert("Password: "+snap.data().password);
+    else alert("Wrong Pin!");
+  }
 
-function startDashboard(){ $('#auth').classList.add("hidden"); $('#dashboard').classList.remove("hidden"); $('#statusPill').textContent="Open"; checkExpiredOffers(); initTabs(); }
-function initTabs(){const bar=$("#mainTabs");bar.innerHTML="";tabs.forEach(t=>{const b=document.createElement("div");b.className="tab";b.textContent=t.label;b.onclick=()=>openTab(t.id);bar.appendChild(b);}); openTab("appointments");}
-async function openTab(id){ $$("#mainTabs .tab").forEach(b=>b.classList.remove("active")); const idx=tabs.findIndex(t=>t.id===id); $$("#mainTabs .tab")[idx].classList.add("active"); const box=$("#tabContent"); box.innerHTML=""; switch(id){
-  case "appointments": renderAppointments(box); break;
-  case "billing": renderBilling(box); break;
-  case "products": renderProducts(box); break;
-  case "offers": checkExpiredOffers(); renderOffers(box); break;
-  case "sales": renderSales(box); break;
-  case "history": renderHistory(box); break;
-  case "support": renderSupport(box); break;
-}}
-/* ---- Rest of your render functions remain same ---- 
-   Only difference: they use getUserData() and saveUserData() which now connect to Firebase */
+  // Add Appointment
+  window.addAppointment = async function(){
+    if(!currentUser) return alert("Login first");
+    let appt = { customer:custName.value, service:service.value, date:apptDate.value, time:apptTime.value };
+    await updateDoc(doc(db,"users",currentUser), { appointments: arrayUnion(appt) });
+    let row = apptTable.insertRow(-1);
+    row.innerHTML = `<td>${appt.customer}</td><td>${appt.service}</td><td>${appt.date}</td><td>${appt.time}</td><td>✔</td>`;
+  }
 
-// --- Placeholder/Mock Render Functions (MUST BE COMPLETED BY YOU) ---
-// Note: You must write the actual logic for these functions to make the app fully functional.
-// I'm adding basic placeholders so the code runs without errors.
-function renderAppointments(box) { box.innerHTML = '<div class="card"><h2>Appointments</h2><p>Appointment management UI goes here.</p></div>'; }
-function renderBilling(box) { box.innerHTML = '<div class="card"><h2>Billing</h2><p>Billing and invoice generation UI goes here.</p></div>'; }
-function renderProducts(box) { box.innerHTML = '<div class="card"><h2>Products & Services</h2><p>Product/Service management UI goes here.</p></div>'; }
-function renderOffers(box) { box.innerHTML = '<div class="card"><h2>Offers & Promotions</h2><p>Offers display and creation UI goes here.</p></div>'; }
-function renderSales(box) { box.innerHTML = '<div class="card"><h2>Sales Reporting</h2><p>Sales summary and reports UI goes here.</p></div>'; }
-function renderHistory(box) { box.innerHTML = '<div class="card"><h2>Customer History</h2><p>Transaction and service history UI goes here.</p></div>'; }
-function renderSupport(box) { box.innerHTML = '<div class="card"><h2>Support</h2><p>Contact and help information goes here.</p></div>'; }
-// --------------------------------------------------------------------
+  // Add Product
+  window.addProduct = async function(){
+    if(!currentUser) return alert("Login first");
+    let prod = { name:prodName.value, price:+prodPrice.value };
+    await updateDoc(doc(db,"users",currentUser), { products: arrayUnion(prod) });
+    let row = prodTable.insertRow(-1);
+    row.innerHTML = `<td>${prod.name}</td><td>${prod.price}</td><td>✔</td>`;
+    let opt = document.createElement("option");
+    opt.text = prod.name+" - "+prod.price; billProd.add(opt);
+  }
 
+  // Add Bill Item
+  window.addBillItem = function(){
+    let prod = billProd.value, qty = +billQty.value;
+    if(!prod || qty<=0) return;
+    let [name, price] = prod.split(" - ");
+    let total = qty*+price;
+    billItems.push({name, qty, price:+price, total});
+    let row = billTable.insertRow(-1);
+    row.innerHTML = `<td>${name}</td><td>${qty}</td><td>${price}</td><td>${total}</td>`;
+    billTotal.innerText = billItems.reduce((s,i)=>s+i.total,0);
+  }
+
+  // Save Bill
+  window.saveBill = async function(){
+    if(!currentUser) return alert("Login first");
+    let bill = { items:billItems, total: billItems.reduce((s,i)=>s+i.total,0), date:new Date().toLocaleString() };
+    await updateDoc(doc(db,"users",currentUser), { bills: arrayUnion(bill), history: arrayUnion(bill), totalSales: bill.total });
+    alert("Bill saved!");
+    totalSales.innerText = bill.total;
+    let row = histTable.insertRow(-1);
+    row.innerHTML = `<td>Customer</td><td>${bill.items.length}</td><td>${bill.total}</td><td>${bill.date}</td>`;
+    billItems = []; billTable.innerHTML="<tr><th>Product</th><th>Qty</th><th>Price</th><th>Total</th></tr>";
+    billTotal.innerText="0";
+  }
+
+  // Add Offer
+  window.addOffer = async function(){
+    if(!currentUser) return alert("Login first");
+    let offer = { title:offerTitle.value, discount:+offerDisc.value };
+    await updateDoc(doc(db,"users",currentUser), { offers: arrayUnion(offer) });
+    let row = offerTable.insertRow(-1);
+    row.innerHTML = `<td>${offer.title}</td><td>${offer.discount}%</td><td>✔</td>`;
+  }
 </script>
 </body>
 </html>
