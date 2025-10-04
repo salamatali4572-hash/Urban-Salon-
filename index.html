@@ -393,6 +393,7 @@ th {
 
 <script type="module">
   // --- Supabase Config ---
+  // NOTE: REPLACE THESE WITH YOUR ACTUAL SUPABASE PROJECT KEYS
   const SUPABASE_URL = 'https://dlbashmqtsnpjbtrzytz.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRsYmFzaG1xdHNucGpidHJ6eXR6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk1NDM0NTcsImV4cCI6MjA3NTExOTQ1N30.r4peO2_kL2w1HiON7dvjfX-_XD4RzDldUAbUYXQq7us';
 
@@ -401,7 +402,7 @@ th {
 
   let currentUser = localStorage.getItem("currentUser") || null;
   let currentUserData = {};
-  let currentUserId = localStorage.getItem("currentUserId") || null; // Supabase user ID for secure updates
+  let currentUserId = localStorage.getItem("currentUserId") || null; 
   let billItems = [];
 
   // DOM Elements
@@ -409,12 +410,21 @@ th {
   const navEl = $('mainNav');
   const { jsPDF } = window.jspdf;
 
-  // --- Supabase Data Structure Assumption ---
-  // The 'users' table in Supabase will be structured to hold the salon data.
-  // We'll use the 'username' for lookups and the internal 'id' for updates.
-  // Required 'users' table columns: id (primary key), username, password, pin, 
-  // appointments (JSONB), products (JSONB), bills (JSONB), offers (JSONB), 
-  // totalSales (numeric), history (JSONB), monthlySales (JSONB).
+  // --- Utility for Supabase Array Updates ---
+  async function updateUserData(updates) {
+    if (!currentUserId) return false;
+    const { error } = await supabase
+      .from('users')
+      .update(updates)
+      .eq('id', currentUserId);
+      
+    if (error) {
+        console.error("Supabase Update Error:", error);
+        alert("Database update failed: " + error.message);
+        return false;
+    }
+    return true;
+  }
 
   // --- Core Functions ---
   async function loadDashboardData() {
@@ -429,6 +439,9 @@ th {
 
     if (error || !data) {
         console.error("Supabase Load Error:", error);
+        // If data load fails, force logout to reset state
+        alert("Failed to load user data. Logging out for safety.");
+        logoutUser();
         return;
     }
     
@@ -441,22 +454,6 @@ th {
     renderMonthlySales(currentUserData.monthlySales || []); 
     
     $('totalSales').innerText = (currentUserData.totalSales || 0).toFixed(2);
-  }
-
-  // --- Utility for Supabase Array Updates (Simulating Firestore's arrayUnion/Remove) ---
-  async function updateUserData(updates) {
-    if (!currentUserId) return false;
-    const { error } = await supabase
-      .from('users')
-      .update(updates)
-      .eq('id', currentUserId);
-      
-    if (error) {
-        console.error("Supabase Update Error:", error);
-        alert("Database update failed: " + error.message);
-        return false;
-    }
-    return true;
   }
 
   // Navigation
@@ -491,7 +488,7 @@ th {
     window.showLogin(); 
   }
   
-  // --- Auth & Session ---
+  // --- Auth & Session (FIXED) ---
   window.showLogin = function() {
     $('loginForm').classList.remove('hidden');
     $('registerForm').classList.add('hidden');
@@ -514,15 +511,20 @@ th {
     let u = $('regUser').value.trim(), p = $('regPass').value, pin = $('regPin').value.trim();
     if (!u || !p || !pin) return alert("Please fill all fields (Username, Password, Owner Pin).");
     
-    // Check if username already exists
+    // 1. Check if username already exists
     const { data: existingUser, error: selectError } = await supabase
         .from('users')
         .select('username')
         .eq('username', u);
 
+    if (selectError) {
+        console.error("Supabase Check Error:", selectError);
+        return alert("Registration failed: Could not check username availability.");
+    }
+    
     if (existingUser && existingUser.length > 0) return alert("This Username already exists.");
     
-    // Insert new user
+    // 2. Insert new user with default data
     const { data, error } = await supabase
         .from('users')
         .insert({ 
@@ -534,37 +536,43 @@ th {
         
     if(error) {
         console.error("Supabase Register Error:", error);
-        return alert("Registration failed: " + error.message);
+        // This usually fails if RLS is too restrictive or schema is wrong.
+        return alert("Registration failed. Check your Supabase 'users' table setup.");
     }
     
-    alert("Account created successfully! Please Login now.");
+    alert("Account created successfully! Please Login now with your Username and Password.");
     $('regUser').value = $('regPass').value = $('regPin').value = '';
     window.showLogin(); 
   }
 
   window.loginUser = async function() {
     let u = $('logUser').value.trim(), p = $('logPass').value;
+    if (!u || !p) return alert("Please enter both Username and Password.");
     
+    // 1. Fetch user by username and password
     const { data: users, error } = await supabase
         .from('users')
         .select('*')
         .eq('username', u)
-        .eq('password', p) // Simple password check, in production use Auth and password hashing!
+        .eq('password', p) 
         .limit(1);
     
     if(error) {
         console.error("Supabase Login Error:", error);
-        return alert("Login failed due to a server error.");
+        return alert("Login failed due to a server error. Check database connection/RLS.");
     }
 
     if(users && users.length === 1){ 
-        currentUser = u; 
-        currentUserId = users[0].id;
-        localStorage.setItem("currentUser", u);
+        // 2. Set session variables
+        const user = users[0];
+        currentUser = user.username; 
+        currentUserId = user.id;
+        localStorage.setItem("currentUser", currentUser);
         localStorage.setItem("currentUserId", currentUserId);
         
-        alert("Welcome, "+u+"! Loading Dashboard..."); 
+        alert("Welcome, "+currentUser+"! Loading Dashboard..."); 
         
+        // 3. Navigate and load data
         navEl.classList.remove('hidden'); 
         window.showTab('appointments', document.querySelector("nav button:nth-child(1)"));
         loadDashboardData();
@@ -638,13 +646,14 @@ th {
 
     const { data, error } = await supabase.storage
         .from('salon-assets') // Create a bucket named 'salon-assets' in Supabase Storage
-        .upload(filePath, file);
+        .upload(filePath, file, { cacheControl: '3600', upsert: false });
 
     if (error) {
         console.error("Storage upload error:", error);
         throw new Error("Image upload failed.");
     }
     
+    // IMPORTANT: Get the public URL
     const { data: publicURLData } = supabase.storage
         .from('salon-assets')
         .getPublicUrl(filePath);
