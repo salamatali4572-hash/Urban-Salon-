@@ -257,7 +257,7 @@ th {
   <h2>Access Control</h2>
   <div id="loginForm">
     <h3>Existing User (Login)</h3>
-    <input id="logUser" placeholder="Username">
+    <input id="logEmail" type="email" placeholder="Email Address">
     <input id="logPass" type="password" placeholder="Password">
     <button class="action" onclick="loginUser()">Login</button>
     <div style="text-align: center; margin-top: 15px;">
@@ -268,7 +268,7 @@ th {
   </div>
   <div id="registerForm" class="hidden">
     <h3>New Account (Register)</h3>
-    <input id="regUser" placeholder="Username">
+    <input id="regEmail" type="email" placeholder="Email Address">
     <input id="regPass" type="password" placeholder="Password">
     <input id="regPin" placeholder="Owner Pin" maxlength="6">
     <button class="action" onclick="registerUser()">Register</button>
@@ -276,7 +276,7 @@ th {
   </div>
   <div id="forgotForm" class="hidden">
     <h3>Forgot Password</h3>
-    <input id="fpUser" placeholder="Username">
+    <input id="fpEmail" type="email" placeholder="Email Address">
     <input id="fpPin" placeholder="Owner Pin" maxlength="6">
     <button class="action" onclick="forgotPassword()">Recover Password</button>
     <button class="auth-link-button" onclick="showLogin()">← Back to Login</button>
@@ -400,7 +400,7 @@ th {
   const { createClient } = window.supabase;
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  let currentUser = localStorage.getItem("currentUser") || null;
+  let currentUserEmail = localStorage.getItem("currentUserEmail") || null;
   let currentUserData = {};
   let currentUserId = localStorage.getItem("currentUserId") || null; 
   let billItems = [];
@@ -428,7 +428,7 @@ th {
 
   // --- Core Functions ---
   async function loadDashboardData() {
-    if (!currentUser || !currentUserId) return;
+    if (!currentUserEmail || !currentUserId) return;
 
     // Fetch data for the current user
     const { data, error } = await supabase
@@ -465,7 +465,7 @@ th {
     
     $(id).classList.add("active");
 
-    if (currentUser && ['appointments', 'products', 'offers', 'sales', 'history'].includes(id)) {
+    if (currentUserEmail && ['appointments', 'products', 'offers', 'sales', 'history'].includes(id)) {
         loadDashboardData();
     }
     if (id === 'billing') {
@@ -474,21 +474,21 @@ th {
   }
 
   // Initial check
-  if (currentUser && currentUserId) {
+  if (currentUserEmail && currentUserId) {
     navEl.classList.remove('hidden'); 
     window.showTab('appointments', document.querySelector("nav button:nth-child(1)"));
     loadDashboardData();
   } else {
-    currentUser = null;
+    currentUserEmail = null;
     currentUserId = null;
-    localStorage.removeItem("currentUser");
+    localStorage.removeItem("currentUserEmail");
     localStorage.removeItem("currentUserId");
     navEl.classList.add('hidden'); 
     window.showTab('auth', document.querySelector("#auth"));
     window.showLogin(); 
   }
   
-  // --- Auth & Session (FIXED) ---
+  // --- Auth & Session (Updated for Email) ---
   window.showLogin = function() {
     $('loginForm').classList.remove('hidden');
     $('registerForm').classList.add('hidden');
@@ -508,82 +508,100 @@ th {
   }
 
   window.registerUser = async function() {
-    let u = $('regUser').value.trim(), p = $('regPass').value, pin = $('regPin').value.trim();
-    if (!u || !p || !pin) return alert("Please fill all fields (Username, Password, Owner Pin).");
-    
-    // 1. Check if username already exists
+    let u = $('regEmail').value.trim(), p = $('regPass').value, pin = $('regPin').value.trim();
+    if (!u || !p || !pin) return alert("Please fill all fields (Email, Password, Owner Pin).");
+    if (!u.includes('@') || !u.includes('.')) return alert("Please enter a valid Email Address.");
+
+    // 1. Check if email already exists
     const { data: existingUser, error: selectError } = await supabase
         .from('users')
-        .select('username')
-        .eq('username', u);
+        .select('id')
+        .eq('email', u);
 
     if (selectError) {
         console.error("Supabase Check Error:", selectError);
-        return alert("Registration failed: Could not check username availability.");
+        return alert("Registration Failed: Could not check email availability. (DB Error: " + selectError.message + ")");
     }
     
-    if (existingUser && existingUser.length > 0) return alert("This Username already exists.");
+    if (existingUser && existingUser.length > 0) return alert("This Email already exists. Please choose another one.");
     
     // 2. Insert new user with default data
-    const { data, error } = await supabase
+    const { data: users, error } = await supabase
         .from('users')
         .insert({ 
-            username: u, 
+            email: u, 
             password: p, 
             pin: pin, 
             appointments:[], products:[], bills:[], offers:[], totalSales:0, history:[], monthlySales:[]
-        });
+        })
+        .select(); 
         
     if(error) {
         console.error("Supabase Register Error:", error);
-        // This usually fails if RLS is too restrictive or schema is wrong.
-        return alert("Registration failed. Check your Supabase 'users' table setup.");
+        return alert("Registration Failed: " + error.message + ". \n\nIMPORTANT: Please ensure you have CREATED the 'users' table and ENABLED RLS with an INSERT Policy for anon role.");
     }
-    
-    alert("Account created successfully! Please Login now with your Username and Password.");
-    $('regUser').value = $('regPass').value = $('regPin').value = '';
-    window.showLogin(); 
+
+    // 3. Auto-Login after successful registration
+    if (users && users.length === 1) {
+        const user = users[0];
+        currentUserEmail = user.email; 
+        currentUserId = user.id;
+        localStorage.setItem("currentUserEmail", currentUserEmail);
+        localStorage.setItem("currentUserId", currentUserId);
+
+        alert("Account created and logged in successfully! Welcome, "+currentUserEmail+"!");
+        
+        // Reset form and navigate
+        $('regEmail').value = $('regPass').value = $('regPin').value = '';
+        navEl.classList.remove('hidden'); 
+        window.showTab('appointments', document.querySelector("nav button:nth-child(1)"));
+        loadDashboardData(); 
+    } else {
+        alert("Account created successfully! Please Login now with your Email and Password.");
+        $('regEmail').value = $('regPass').value = $('regPin').value = '';
+        window.showLogin(); 
+    }
   }
 
   window.loginUser = async function() {
-    let u = $('logUser').value.trim(), p = $('logPass').value;
-    if (!u || !p) return alert("Please enter both Username and Password.");
+    let u = $('logEmail').value.trim(), p = $('logPass').value;
+    if (!u || !p) return alert("Please enter both Email and Password.");
     
-    // 1. Fetch user by username and password
+    // 1. Fetch user by email and password
     const { data: users, error } = await supabase
         .from('users')
         .select('*')
-        .eq('username', u)
+        .eq('email', u)
         .eq('password', p) 
         .limit(1);
     
     if(error) {
         console.error("Supabase Login Error:", error);
-        return alert("Login failed due to a server error. Check database connection/RLS.");
+        return alert("Login failed due to a server error. Check database connection/RLS: " + error.message);
     }
 
     if(users && users.length === 1){ 
         // 2. Set session variables
         const user = users[0];
-        currentUser = user.username; 
-        currentUserId = user.id;
-        localStorage.setItem("currentUser", currentUser);
+        currentUserEmail = user.email; 
+        currentUserId = user.id; 
+        localStorage.setItem("currentUserEmail", currentUserEmail);
         localStorage.setItem("currentUserId", currentUserId);
         
-        alert("Welcome, "+currentUser+"! Loading Dashboard..."); 
+        alert("Welcome, "+currentUserEmail+"! Loading Dashboard..."); 
         
         // 3. Navigate and load data
         navEl.classList.remove('hidden'); 
         window.showTab('appointments', document.querySelector("nav button:nth-child(1)"));
         loadDashboardData();
     }
-    else alert("Invalid username or password.");
+    else alert("Invalid email or password.");
   }
 
   window.logoutUser = function() {
-      currentUser = null;
+      currentUserEmail = null;
       currentUserId = null;
-      localStorage.removeItem("currentUser");
+      localStorage.removeItem("currentUserEmail");
       localStorage.removeItem("currentUserId");
       currentUserData = {};
       alert("Logged out successfully.");
@@ -598,12 +616,12 @@ th {
   }
 
   window.forgotPassword = async function(){
-    let u = $('fpUser').value.trim(), pin = $('fpPin').value.trim();
+    let u = $('fpEmail').value.trim(), pin = $('fpPin').value.trim();
     
     const { data: users, error } = await supabase
         .from('users')
         .select('password')
-        .eq('username', u)
+        .eq('email', u)
         .eq('pin', pin)
         .limit(1);
 
@@ -613,12 +631,12 @@ th {
     }
         
     if(users && users.length === 1) alert("Your Password is: "+users[0].password);
-    else alert("Wrong username or Owner Pin!");
+    else alert("Wrong Email or Owner Pin!");
   }
   
   // --- Pin Verification ---
   async function verifyOwnerPin() {
-    if (!currentUser) return false;
+    if (!currentUserEmail) return false;
     const inputPin = prompt("Enter Owner Pin to confirm this action:");
     if (!inputPin) return false;
     
@@ -641,8 +659,10 @@ th {
   // Supabase Storage Upload
   async function uploadPhoto(file, path) {
     if (!file) return null;
+    // Use User ID in filename for uniqueness if email contains special chars
+    const folderName = currentUserId || 'anon'; 
     const fileName = `${new Date().getTime()}_${file.name}`;
-    const filePath = `${currentUser}/${path}/${fileName}`;
+    const filePath = `${folderName}/${path}/${fileName}`;
 
     const { data, error } = await supabase.storage
         .from('salon-assets') // Create a bucket named 'salon-assets' in Supabase Storage
@@ -822,7 +842,7 @@ th {
   
   // Appointment Management (New)
   window.manageAppointment = async function(keyString, newStatus) {
-      if (!currentUser) return;
+      if (!currentUserEmail) return;
       const [date, time] = keyString.split('|');
 
       const appointments = currentUserData.appointments || [];
@@ -861,7 +881,7 @@ th {
   
   // Delete Appointment 
   window.deleteAppointment = async function(keyString) {
-      if (!currentUser) return;
+      if (!currentUserEmail) return;
       if (!await verifyOwnerPin()) return; // Pin Check
       
       const [date, time] = keyString.split('|');
@@ -880,7 +900,7 @@ th {
 
   // Product/Offer Removal (Pin Protected)
   window.removeProduct = async function(name) {
-      if (!currentUser) return;
+      if (!currentUserEmail) return;
       if (!await verifyOwnerPin()) return; 
       
       const products = currentUserData.products || [];
@@ -895,7 +915,7 @@ th {
   }
   
   window.removeOffer = async function(title) {
-      if (!currentUser) return;
+      if (!currentUserEmail) return;
       if (!await verifyOwnerPin()) return; 
       
       const offers = currentUserData.offers || [];
@@ -911,7 +931,7 @@ th {
 
   // Adding Data
   window.addAppointment = async function(){
-    if(!currentUser) return alert("Please log in first.");
+    if(!currentUserEmail) return alert("Please log in first.");
     let appt = { 
         customer:$('custName').value.trim(), 
         service:$('service').value.trim(), 
@@ -934,7 +954,7 @@ th {
   }
 
   window.addProduct = async function(){
-    if(!currentUser) return alert("Please log in first.");
+    if(!currentUserEmail) return alert("Please log in first.");
     let name = $('prodName').value.trim();
     let price = +$('prodPrice').value;
     const photoFile = $('prodPhoto').files[0];
@@ -968,7 +988,7 @@ th {
   }
   
   window.addOffer = async function(){
-    if(!currentUser) return alert("Please log in first.");
+    if(!currentUserEmail) return alert("Please log in first.");
     let title = $('offerTitle').value.trim();
     let discount = +$('offerDisc').value;
     const photoFile = $('offerPhoto').files[0];
@@ -1022,7 +1042,7 @@ th {
   }
 
   window.saveBill = async function(){
-    if(!currentUser) return alert("Please log in first.");
+    if(!currentUserEmail) return alert("Please log in first.");
     if(billItems.length === 0) return alert("The bill is empty.");
     
     const finalTotal = billItems.reduce((s,i)=>s+i.total, 0);
@@ -1076,7 +1096,9 @@ th {
     if (success) {
         // 3. Optional WhatsApp Text Receipt
         if (cleanPhone && cleanPhone.length >= 10) {
-            let msgText = `*Salon Receipt - ${currentUser}*\n\n`;
+            // Using the current user's email for the salon name placeholder
+            const salonNamePart = currentUserEmail.substring(0, currentUserEmail.indexOf('@')).toUpperCase();
+            let msgText = `*Salon Receipt - ${salonNamePart}*\n\n`;
             msgText += `Dear ${customerName},\n`;
             msgText += `Your Total: *Rs. ${finalTotal.toFixed(2)}*\n`;
             msgText += `Date: ${new Date().toLocaleDateString()}\n\n`;
@@ -1100,7 +1122,7 @@ th {
   
   // Sales & Reporting Functions
   window.closeDay = async function() {
-    if (!currentUser) return alert("Please log in first.");
+    if (!currentUserEmail) return alert("Please log in first.");
     if (!await verifyOwnerPin()) return; 
 
     const currentSales = currentUserData.totalSales || 0;
@@ -1129,13 +1151,12 @@ th {
   }
 
   window.generatePDFStatement = function() {
-      // PDF generation logic remains the same
-      if (!currentUser) return alert("Please log in first.");
+      if (!currentUserEmail) return alert("Please log in first.");
       const salesData = currentUserData.monthlySales || [];
       if (salesData.length === 0) return alert("No sales data in history to generate PDF.");
 
       const doc = new jsPDF();
-      const shopName = `SALON MANAGER PRO - ${currentUser.toUpperCase()}`;
+      const shopName = `SALON MANAGER PRO - ${currentUserEmail.toUpperCase()}`; // Using email for identifier
       const title = "Monthly Sales Statement";
       
       doc.setFontSize(18);
@@ -1164,13 +1185,14 @@ th {
       doc.setFont(doc.getFont().fontName, 'bold');
       doc.text(`GRAND TOTAL: Rs. ${grandTotal.toFixed(2)}`, 190, finalY + 10, null, null, "right");
 
-      doc.save(`Sales_Statement_${currentUser}_${new Date().getMonth() + 1}_${new Date().getFullYear()}.pdf`);
+      doc.save(`Sales_Statement_${currentUserEmail}_${new Date().getMonth() + 1}_${new Date().getFullYear()}.pdf`);
       alert("PDF Statement generated and downloaded.");
   }
   
   // Offer Sharing Function
   window.shareOfferPopup = function(title, discount, photoURL) {
-      const shareText = `*New Offer at ${currentUser}'s Salon!* 🔥\n\n🎉 ${title}\nDiscount: *${discount}% OFF* on selected services!\n\nVisit us today!`;
+      const shopIdentifier = currentUserEmail.substring(0, currentUserEmail.indexOf('@')).toUpperCase();
+      const shareText = `*New Offer at ${shopIdentifier}'s Salon!* 🔥\n\n🎉 ${title}\nDiscount: *${discount}% OFF* on selected services!\n\nVisit us today!`;
       
       const shareOption = prompt(
           `Share Offer: ${title}\n\nSelect an option:\n1. Share via WhatsApp\n2. Share via Facebook/Instagram (Copy Text)\n3. Download Offer Image`
