@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Salon Manager Pro (Salamat Ali)</title>
+<title>Salon Manager Pro (Salamat Ali - Supabase)</title>
 <style>
 /* --- CSS (Minor adjustments for table status) --- */
 :root {
@@ -389,30 +389,19 @@ th {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
-  import { getFirestore, doc, setDoc, getDoc, updateDoc, arrayUnion, arrayRemove } 
-    from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
-  import { getStorage, ref, uploadBytes, getDownloadURL } 
-    from "https://www.gstatic.com/firebasejs/10.12.4/firebase-storage.js"; 
+  // --- Supabase Config ---
+  const SUPABASE_URL = 'https://dlbashmqtsnpjbtrzytz.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRsYmFzaG1xdHNucGpidHJ6eXR6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk1NDM0NTcsImV4cCI6MjA3NTExOTQ1N30.r4peO2_kL2w1HiON7dvjfX-_XD4RzDldUAbUYXQq7us';
 
-  // --- Firebase Config (Please replace with your actual keys if needed) ---
-  const firebaseConfig = {
-    apiKey: "AIzaSyBBFGIwiuzXNFrJ7kRe1rNauKqolIVMVI4",
-    authDomain: "upsm-107f6.firebaseapp.com",
-    projectId: "upsm-107f6",
-    storageBucket: "upsm-107f6.firebasestorage.app", 
-    messagingSenderId: "359645965485",
-    appId: "1:359645965485:web:a8358f7316cc433b182a24",
-    measurementId: "G-QYS5PB1C6Y"
-  };
-
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
-  const storage = getStorage(app); 
+  const { createClient } = window.supabase;
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   let currentUser = localStorage.getItem("currentUser") || null;
   let currentUserData = {};
+  let currentUserId = localStorage.getItem("currentUserId") || null; // Supabase user ID for secure updates
   let billItems = [];
 
   // DOM Elements
@@ -420,13 +409,30 @@ th {
   const navEl = $('mainNav');
   const { jsPDF } = window.jspdf;
 
+  // --- Supabase Data Structure Assumption ---
+  // The 'users' table in Supabase will be structured to hold the salon data.
+  // We'll use the 'username' for lookups and the internal 'id' for updates.
+  // Required 'users' table columns: id (primary key), username, password, pin, 
+  // appointments (JSONB), products (JSONB), bills (JSONB), offers (JSONB), 
+  // totalSales (numeric), history (JSONB), monthlySales (JSONB).
+
   // --- Core Functions ---
   async function loadDashboardData() {
-    if (!currentUser) return;
-    const snap = await getDoc(doc(db, "users", currentUser));
-    if (!snap.exists()) return;
+    if (!currentUser || !currentUserId) return;
+
+    // Fetch data for the current user
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', currentUserId)
+      .single();
+
+    if (error || !data) {
+        console.error("Supabase Load Error:", error);
+        return;
+    }
     
-    currentUserData = snap.data();
+    currentUserData = data;
     
     renderAppointments(currentUserData.appointments || []);
     renderProducts(currentUserData.products || []);
@@ -435,6 +441,22 @@ th {
     renderMonthlySales(currentUserData.monthlySales || []); 
     
     $('totalSales').innerText = (currentUserData.totalSales || 0).toFixed(2);
+  }
+
+  // --- Utility for Supabase Array Updates (Simulating Firestore's arrayUnion/Remove) ---
+  async function updateUserData(updates) {
+    if (!currentUserId) return false;
+    const { error } = await supabase
+      .from('users')
+      .update(updates)
+      .eq('id', currentUserId);
+      
+    if (error) {
+        console.error("Supabase Update Error:", error);
+        alert("Database update failed: " + error.message);
+        return false;
+    }
+    return true;
   }
 
   // Navigation
@@ -455,11 +477,15 @@ th {
   }
 
   // Initial check
-  if (currentUser) {
+  if (currentUser && currentUserId) {
     navEl.classList.remove('hidden'); 
     window.showTab('appointments', document.querySelector("nav button:nth-child(1)"));
     loadDashboardData();
   } else {
+    currentUser = null;
+    currentUserId = null;
+    localStorage.removeItem("currentUser");
+    localStorage.removeItem("currentUserId");
     navEl.classList.add('hidden'); 
     window.showTab('auth', document.querySelector("#auth"));
     window.showLogin(); 
@@ -487,13 +513,30 @@ th {
   window.registerUser = async function() {
     let u = $('regUser').value.trim(), p = $('regPass').value, pin = $('regPin').value.trim();
     if (!u || !p || !pin) return alert("Please fill all fields (Username, Password, Owner Pin).");
-    const snap = await getDoc(doc(db, "users", u));
-    if (snap.exists()) return alert("This Username already exists.");
-    await setDoc(doc(db, "users", u), { 
-        password: p, 
-        pin: pin, 
-        appointments:[], products:[], bills:[], offers:[], totalSales:0, history:[], monthlySales:[]
-    });
+    
+    // Check if username already exists
+    const { data: existingUser, error: selectError } = await supabase
+        .from('users')
+        .select('username')
+        .eq('username', u);
+
+    if (existingUser && existingUser.length > 0) return alert("This Username already exists.");
+    
+    // Insert new user
+    const { data, error } = await supabase
+        .from('users')
+        .insert({ 
+            username: u, 
+            password: p, 
+            pin: pin, 
+            appointments:[], products:[], bills:[], offers:[], totalSales:0, history:[], monthlySales:[]
+        });
+        
+    if(error) {
+        console.error("Supabase Register Error:", error);
+        return alert("Registration failed: " + error.message);
+    }
+    
     alert("Account created successfully! Please Login now.");
     $('regUser').value = $('regPass').value = $('regPin').value = '';
     window.showLogin(); 
@@ -501,11 +544,25 @@ th {
 
   window.loginUser = async function() {
     let u = $('logUser').value.trim(), p = $('logPass').value;
-    const snap = await getDoc(doc(db, "users", u));
     
-    if(snap.exists() && snap.data().password === p){ 
+    const { data: users, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('username', u)
+        .eq('password', p) // Simple password check, in production use Auth and password hashing!
+        .limit(1);
+    
+    if(error) {
+        console.error("Supabase Login Error:", error);
+        return alert("Login failed due to a server error.");
+    }
+
+    if(users && users.length === 1){ 
         currentUser = u; 
+        currentUserId = users[0].id;
         localStorage.setItem("currentUser", u);
+        localStorage.setItem("currentUserId", currentUserId);
+        
         alert("Welcome, "+u+"! Loading Dashboard..."); 
         
         navEl.classList.remove('hidden'); 
@@ -517,7 +574,9 @@ th {
 
   window.logoutUser = function() {
       currentUser = null;
+      currentUserId = null;
       localStorage.removeItem("currentUser");
+      localStorage.removeItem("currentUserId");
       currentUserData = {};
       alert("Logged out successfully.");
       
@@ -532,8 +591,20 @@ th {
 
   window.forgotPassword = async function(){
     let u = $('fpUser').value.trim(), pin = $('fpPin').value.trim();
-    const snap = await getDoc(doc(db,"users",u));
-    if(snap.exists() && snap.data().pin === pin) alert("Your Password is: "+snap.data().password);
+    
+    const { data: users, error } = await supabase
+        .from('users')
+        .select('password')
+        .eq('username', u)
+        .eq('pin', pin)
+        .limit(1);
+
+    if(error) {
+        console.error("Supabase Forgot Error:", error);
+        return alert("Password recovery failed.");
+    }
+        
+    if(users && users.length === 1) alert("Your Password is: "+users[0].password);
     else alert("Wrong username or Owner Pin!");
   }
   
@@ -543,8 +614,14 @@ th {
     const inputPin = prompt("Enter Owner Pin to confirm this action:");
     if (!inputPin) return false;
     
-    const snap = await getDoc(doc(db,"users",currentUser));
-    if(snap.exists() && snap.data().pin === inputPin) {
+    const { data: users, error } = await supabase
+        .from('users')
+        .select('pin')
+        .eq('id', currentUserId)
+        .eq('pin', inputPin)
+        .limit(1);
+
+    if(users && users.length === 1) {
         return true;
     } else {
         alert("Invalid Owner Pin!");
@@ -553,13 +630,28 @@ th {
   }
 
   // --- Rendering Functions ---
+  // Supabase Storage Upload
   async function uploadPhoto(file, path) {
     if (!file) return null;
-    const storageRef = ref(storage, `${currentUser}/${path}/${new Date().getTime()}_${file.name}`);
-    const snapshot = await uploadBytes(storageRef, file);
-    return getDownloadURL(snapshot.ref);
-  }
+    const fileName = `${new Date().getTime()}_${file.name}`;
+    const filePath = `${currentUser}/${path}/${fileName}`;
 
+    const { data, error } = await supabase.storage
+        .from('salon-assets') // Create a bucket named 'salon-assets' in Supabase Storage
+        .upload(filePath, file);
+
+    if (error) {
+        console.error("Storage upload error:", error);
+        throw new Error("Image upload failed.");
+    }
+    
+    const { data: publicURLData } = supabase.storage
+        .from('salon-assets')
+        .getPublicUrl(filePath);
+        
+    return publicURLData.publicUrl;
+  }
+  
   // Rendering for Products
   function renderProducts(prods) {
       const feed = $('prodFeed');
@@ -577,7 +669,7 @@ th {
                   Price: <span style="color:var(--primary-blue);">Rs. ${prod.price.toFixed(2)}</span>
               </div>
               <div class="feed-actions">
-                  <button class="row-actions action" style="background:var(--danger-red);" onclick="removeProduct('${prod.name}')">Remove</button>
+                  <button class="row-actions action" style="background:var(--danger-red);" onclick="removeProduct('${prod.name.replace(/'/g, "\\'")}')">Remove</button>
               </div>
           `;
           feed.appendChild(card);
@@ -604,8 +696,8 @@ th {
                   Discount: <span style="color:var(--primary-blue);">${offer.discount}% OFF</span>
               </div>
               <div class="feed-actions">
-                  <button class="row-actions share-btn" onclick="shareOfferPopup('${offer.title}', '${offer.discount}', '${offer.photoURL || 'https://via.placeholder.com/80?text=Offer'}')">Share</button>
-                  <button class="row-actions action" style="background:var(--danger-red);" onclick="removeOffer('${offer.title}')">Remove</button>
+                  <button class="row-actions share-btn" onclick="shareOfferPopup('${offer.title.replace(/'/g, "\\'")}', '${offer.discount}', '${offer.photoURL || 'https://via.placeholder.com/80?text=Offer'}')">Share</button>
+                  <button class="row-actions action" style="background:var(--danger-red);" onclick="removeOffer('${offer.title.replace(/'/g, "\\'")}')">Remove</button>
               </div>
           `;
           feed.appendChild(card);
@@ -622,6 +714,8 @@ th {
           const row = table.insertRow(-1);
           // Create a unique ID for the delete button using date and time
           const deleteBtnId = `del-${appt.date}-${appt.time}`.replace(/[:-\s]/g, '');
+          // Use a key-safe string for JS function calls
+          const keyString = `${appt.date}|${appt.time}`; 
 
           // Determine the correct status (use 'Pending' if not set)
           const currentStatus = appt.status || 'Pending'; 
@@ -634,7 +728,7 @@ th {
               <td>
                   <select class="status-select" 
                           id="status-${deleteBtnId}"
-                          onchange="manageAppointment('${appt.date}', '${appt.time}', this.value)">
+                          onchange="manageAppointment('${keyString}', this.value)">
                       <option value="Pending" ${currentStatus === 'Pending' ? 'selected' : ''}>Pending</option>
                       <option value="Finished" ${currentStatus === 'Finished' ? 'selected' : ''}>Finished</option>
                       <option value="Cancelled" ${currentStatus === 'Cancelled' ? 'selected' : ''}>Cancelled</option>
@@ -644,7 +738,7 @@ th {
                   <button class="delete-btn" 
                           id="${deleteBtnId}"
                           style="display: ${['Finished', 'Cancelled'].includes(currentStatus) ? 'block' : 'none'};"
-                          onclick="deleteAppointment('${appt.date}', '${appt.time}')">Delete</button>
+                          onclick="deleteAppointment('${keyString}')">Delete</button>
               </td>
           `;
       });
@@ -715,11 +809,12 @@ th {
   }
 
 
-  // --- Data Management Functions ---
+  // --- Data Management Functions (Replaced ArrayUnion/Remove with JS modifications) ---
   
   // Appointment Management (New)
-  window.manageAppointment = async function(date, time, newStatus) {
+  window.manageAppointment = async function(keyString, newStatus) {
       if (!currentUser) return;
+      const [date, time] = keyString.split('|');
 
       const appointments = currentUserData.appointments || [];
       const index = appointments.findIndex(a => a.date === date && a.time === time);
@@ -735,34 +830,41 @@ th {
       const newAppointments = appointments.filter((_, i) => i !== index);
       newAppointments.push(apptToUpdate);
 
-      await updateDoc(doc(db, "users", currentUser), { appointments: newAppointments });
+      const success = await updateUserData({ appointments: newAppointments });
 
-      // Update the UI element (Delete button visibility)
-      const deleteBtnId = `del-${date}-${time}`.replace(/[:-\s]/g, '');
-      const deleteBtn = $(deleteBtnId);
+      if (success) {
+        // Update the UI element (Delete button visibility)
+        const deleteBtnId = `del-${date}-${time}`.replace(/[:-\s]/g, '');
+        const deleteBtn = $(deleteBtnId);
 
-      if (deleteBtn) {
-          if (newStatus === 'Finished' || newStatus === 'Cancelled') {
-              deleteBtn.style.display = 'block';
-          } else {
-              deleteBtn.style.display = 'none';
-          }
+        if (deleteBtn) {
+            if (newStatus === 'Finished' || newStatus === 'Cancelled') {
+                deleteBtn.style.display = 'block';
+            } else {
+                deleteBtn.style.display = 'none';
+            }
+        }
+        
+        alert(`Appointment status updated to: ${newStatus}`);
+        currentUserData.appointments = newAppointments;
       }
-      
-      alert(`Appointment status updated to: ${newStatus}`);
-      currentUserData.appointments = newAppointments;
   }
   
-  // Delete Appointment (Updated to be called separately)
-  window.deleteAppointment = async function(date, time) {
+  // Delete Appointment 
+  window.deleteAppointment = async function(keyString) {
       if (!currentUser) return;
       if (!await verifyOwnerPin()) return; // Pin Check
       
-      const apptToRemove = currentUserData.appointments.find(a => a.date === date && a.time === time);
-      if (apptToRemove) {
-          await updateDoc(doc(db, "users", currentUser), { appointments: arrayRemove(apptToRemove) });
-          alert("Appointment deleted permanently.");
-          loadDashboardData();
+      const [date, time] = keyString.split('|');
+      const appointments = currentUserData.appointments || [];
+      
+      const newAppointments = appointments.filter(a => !(a.date === date && a.time === time));
+      
+      const success = await updateUserData({ appointments: newAppointments });
+      
+      if (success) {
+        alert("Appointment deleted permanently.");
+        loadDashboardData();
       }
   }
 
@@ -772,11 +874,14 @@ th {
       if (!currentUser) return;
       if (!await verifyOwnerPin()) return; 
       
-      const prodToRemove = currentUserData.products.find(p => p.name === name);
-      if (prodToRemove) {
-          await updateDoc(doc(db, "users", currentUser), { products: arrayRemove(prodToRemove) });
-          alert("Product/Service removed.");
-          loadDashboardData();
+      const products = currentUserData.products || [];
+      const newProducts = products.filter(p => p.name !== name);
+      
+      const success = await updateUserData({ products: newProducts });
+      
+      if (success) {
+        alert("Product/Service removed.");
+        loadDashboardData();
       }
   }
   
@@ -784,11 +889,14 @@ th {
       if (!currentUser) return;
       if (!await verifyOwnerPin()) return; 
       
-      const offerToRemove = currentUserData.offers.find(o => o.title === title);
-      if (offerToRemove) {
-          await updateDoc(doc(db, "users", currentUser), { offers: arrayRemove(offerToRemove) });
-          alert("Offer removed.");
-          loadDashboardData();
+      const offers = currentUserData.offers || [];
+      const newOffers = offers.filter(o => o.title !== title);
+      
+      const success = await updateUserData({ offers: newOffers });
+      
+      if (success) {
+        alert("Offer removed.");
+        loadDashboardData();
       }
   }
 
@@ -800,14 +908,20 @@ th {
         service:$('service').value.trim(), 
         date:$('apptDate').value, 
         time:$('apptTime').value,
-        status: 'Pending' // Set default status
+        status: 'Pending' 
     };
     if (!appt.customer || !appt.service || !appt.date || !appt.time) return alert("Please fill all appointment details.");
     
-    await updateDoc(doc(db,"users",currentUser), { appointments: arrayUnion(appt) });
-    alert("Appointment added.");
-    $('custName').value = $('service').value = $('apptDate').value = $('apptTime').value = '';
-    loadDashboardData(); 
+    const appointments = currentUserData.appointments || [];
+    const newAppointments = [...appointments, appt];
+
+    const success = await updateUserData({ appointments: newAppointments });
+    
+    if (success) {
+        alert("Appointment added.");
+        $('custName').value = $('service').value = $('apptDate').value = $('apptTime').value = '';
+        loadDashboardData(); 
+    }
   }
 
   window.addProduct = async function(){
@@ -831,11 +945,17 @@ th {
     
     let prod = { name, price, photoURL };
     
-    await updateDoc(doc(db,"users",currentUser), { products: arrayUnion(prod) });
-    alert("Product/Service added successfully.");
-    $('prodName').value = $('prodPrice').value = '';
-    $('prodPhoto').value = null; 
-    loadDashboardData(); 
+    const products = currentUserData.products || [];
+    const newProducts = [...products, prod];
+    
+    const success = await updateUserData({ products: newProducts });
+
+    if (success) {
+        alert("Product/Service added successfully.");
+        $('prodName').value = $('prodPrice').value = '';
+        $('prodPhoto').value = null; 
+        loadDashboardData(); 
+    }
   }
   
   window.addOffer = async function(){
@@ -858,11 +978,18 @@ th {
     }
 
     let offer = { title, discount, photoURL };
-    await updateDoc(doc(db,"users",currentUser), { offers: arrayUnion(offer) });
-    alert("Offer added successfully.");
-    $('offerTitle').value = $('offerDisc').value = '';
-    $('offerPhoto').value = null; 
-    loadDashboardData();
+    
+    const offers = currentUserData.offers || [];
+    const newOffers = [...offers, offer];
+    
+    const success = await updateUserData({ offers: newOffers });
+    
+    if (success) {
+        alert("Offer added successfully.");
+        $('offerTitle').value = $('offerDisc').value = '';
+        $('offerPhoto').value = null; 
+        loadDashboardData();
+    }
   }
 
   window.addBillItem = function(){
@@ -927,34 +1054,39 @@ th {
         alert("Bill saved, but failed to generate image receipt. Check console for details.");
     }
     
-    // 2. Save Data to Firebase
-    await updateDoc(doc(db,"users",currentUser), { 
-        bills: arrayUnion(bill), 
-        history: arrayUnion(bill), 
+    // 2. Save Data to Supabase (using array simulation)
+    const history = currentUserData.history || [];
+    const bills = currentUserData.bills || [];
+    
+    const success = await updateUserData({
+        bills: [...bills, bill],
+        history: [...history, bill], 
         totalSales: newTotalSales 
     });
 
-    // 3. Optional WhatsApp Text Receipt
-    if (cleanPhone && cleanPhone.length >= 10) {
-        let msgText = `*Salon Receipt - ${currentUser}*\n\n`;
-        msgText += `Dear ${customerName},\n`;
-        msgText += `Your Total: *Rs. ${finalTotal.toFixed(2)}*\n`;
-        msgText += `Date: ${new Date().toLocaleDateString()}\n\n`;
-        
-        const encodedMessage = encodeURIComponent(msgText);
-        const waLink = `https://wa.me/${cleanPhone}?text=${encodedMessage}`;
-        
-        window.open(waLink, '_blank');
-    }
+    if (success) {
+        // 3. Optional WhatsApp Text Receipt
+        if (cleanPhone && cleanPhone.length >= 10) {
+            let msgText = `*Salon Receipt - ${currentUser}*\n\n`;
+            msgText += `Dear ${customerName},\n`;
+            msgText += `Your Total: *Rs. ${finalTotal.toFixed(2)}*\n`;
+            msgText += `Date: ${new Date().toLocaleDateString()}\n\n`;
+            
+            const encodedMessage = encodeURIComponent(msgText);
+            const waLink = `https://wa.me/${cleanPhone}?text=${encodedMessage}`;
+            
+            window.open(waLink, '_blank');
+        }
 
-    // 4. Reset Bill State
-    billItems = []; 
-    $('billTable').innerHTML="<tr><th>Product</th><th>Qty</th><th>Price</th><th>Total</th></tr>";
-    $('billTotal').innerText="0.00";
-    $('billCustName').value = '';
-    $('billCustPhone').value = '';
-    
-    loadDashboardData();
+        // 4. Reset Bill State
+        billItems = []; 
+        $('billTable').innerHTML="<tr><th>Product</th><th>Qty</th><th>Price</th><th>Total</th></tr>";
+        $('billTotal').innerText="0.00";
+        $('billCustName').value = '';
+        $('billCustPhone').value = '';
+        
+        loadDashboardData();
+    }
   }
   
   // Sales & Reporting Functions
@@ -972,17 +1104,23 @@ th {
         date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
         amount: currentSales
     };
+    
+    const monthlySales = currentUserData.monthlySales || [];
+    const newMonthlySales = [...monthlySales, salesRecord];
 
-    await updateDoc(doc(db,"users",currentUser), { 
-        monthlySales: arrayUnion(salesRecord),
+    const success = await updateUserData({ 
+        monthlySales: newMonthlySales,
         totalSales: 0 
     });
     
-    alert(`Day closed successfully! Sales of Rs. ${currentSales.toFixed(2)} archived.`);
-    loadDashboardData();
+    if (success) {
+        alert(`Day closed successfully! Sales of Rs. ${currentSales.toFixed(2)} archived.`);
+        loadDashboardData();
+    }
   }
 
   window.generatePDFStatement = function() {
+      // PDF generation logic remains the same
       if (!currentUser) return alert("Please log in first.");
       const salesData = currentUserData.monthlySales || [];
       if (salesData.length === 0) return alert("No sales data in history to generate PDF.");
