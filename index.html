@@ -349,7 +349,7 @@ th {
   </div>
   <button class="action" onclick="addBillItem()">Add Item to Bill</button>
   <div id="billReceipt">
-    <h3 style="border-bottom: 1px dotted #ccc;">SALON BILL RECEIPT - ${new Date().toLocaleDateString()}</h3>
+    <h3 id="billReceiptHeader" style="border-bottom: 1px dotted #ccc;">SALON BILL RECEIPT</h3>
     <table id="billTable">
       <tr><th>Product</th><th>Qty</th><th>Price</th><th>Total</th></tr>
     </table>
@@ -385,16 +385,16 @@ th {
   </table>
 </section>
 
-<script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
-
 <script type="module">
+  // All imports needed for Firebase and external libraries
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
   import { getFirestore, doc, setDoc, getDoc, updateDoc, arrayUnion, arrayRemove } 
     from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
-  import { getStorage, ref, uploadBytes, getDownloadURL } 
-    from "https://www.gstatic.com/firebasejs/10.12.4/firebase-storage.js"; 
+
+  import html2canvas from 'https://html2canvas.hertzen.com/dist/html2canvas.min.js';
+  import { jsPDF } from 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+  import 'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js';
+
 
   // --- Firebase Config (Please replace with your actual keys if needed) ---
   const firebaseConfig = {
@@ -409,7 +409,6 @@ th {
 
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
-  const storage = getStorage(app); 
 
   let currentUser = localStorage.getItem("currentUser") || null;
   let currentUserData = {};
@@ -417,24 +416,49 @@ th {
 
   // DOM Elements
   const $ = (id) => document.getElementById(id);
-  const navEl = $('mainNav');
-  const { jsPDF } = window.jspdf;
+  // FIX: navEl ko ab declare kiya gaya hai
+  let navEl;
+
+  // --- NEW: Utility Function for Local Image Storage (Base64) ---
+  function fileToBase64(file) {
+      return new Promise((resolve, reject) => {
+          if (!file) {
+              return resolve(null);
+          }
+          const reader = new FileReader();
+          reader.readAsDataURL(file);
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = error => reject(error);
+      });
+  }
+  // -------------------------------------------------------------------
+
 
   // --- Core Functions ---
   async function loadDashboardData() {
     if (!currentUser) return;
-    const snap = await getDoc(doc(db, "users", currentUser));
-    if (!snap.exists()) return;
-    
-    currentUserData = snap.data();
-    
-    renderAppointments(currentUserData.appointments || []);
-    renderProducts(currentUserData.products || []);
-    renderOffers(currentUserData.offers || []);
-    renderHistory(currentUserData.history || []);
-    renderMonthlySales(currentUserData.monthlySales || []); 
-    
-    $('totalSales').innerText = (currentUserData.totalSales || 0).toFixed(2);
+    try {
+        const snap = await getDoc(doc(db, "users", currentUser));
+        if (!snap.exists()) {
+            console.error("User document not found for:", currentUser);
+            // Agar user ka document nahi milta to usko logout kar dena chahiye
+            logoutUser();
+            return;
+        }
+        
+        currentUserData = snap.data();
+        
+        renderAppointments(currentUserData.appointments || []);
+        renderProducts(currentUserData.products || []);
+        renderOffers(currentUserData.offers || []);
+        renderHistory(currentUserData.history || []);
+        renderMonthlySales(currentUserData.monthlySales || []); 
+        
+        $('totalSales').innerText = (currentUserData.totalSales || 0).toFixed(2);
+    } catch(e) {
+        console.error("Error loading dashboard data:", e);
+        alert("Failed to load data from Firebase. Check your connection or rules.");
+    }
   }
 
   // Navigation
@@ -454,18 +478,27 @@ th {
     }
   }
 
-  // Initial check
-  if (currentUser) {
-    navEl.classList.remove('hidden'); 
-    window.showTab('appointments', document.querySelector("nav button:nth-child(1)"));
-    loadDashboardData();
-  } else {
-    navEl.classList.add('hidden'); 
-    window.showTab('auth', document.querySelector("#auth"));
-    window.showLogin(); 
+  // Initial check function - called after DOM is fully loaded
+  function initialCheck() {
+      navEl = $('mainNav');
+      
+      if (currentUser) {
+        navEl.classList.remove('hidden'); 
+        window.showTab('appointments', document.querySelector("nav button:nth-child(1)"));
+        loadDashboardData();
+      } else {
+        navEl.classList.add('hidden'); 
+        // Agar currentUser nahi hai to seedha auth section dikhana hai
+        window.showTab('auth');
+        window.showLogin(); 
+      }
   }
   
-  // --- Auth & Session ---
+  // FIX: DOMContentLoaded event listener lagaya gaya hai
+  window.addEventListener('DOMContentLoaded', initialCheck);
+
+  
+  // --- Auth & Session (Made Global) ---
   window.showLogin = function() {
     $('loginForm').classList.remove('hidden');
     $('registerForm').classList.add('hidden');
@@ -487,32 +520,45 @@ th {
   window.registerUser = async function() {
     let u = $('regUser').value.trim(), p = $('regPass').value, pin = $('regPin').value.trim();
     if (!u || !p || !pin) return alert("Please fill all fields (Username, Password, Owner Pin).");
-    const snap = await getDoc(doc(db, "users", u));
-    if (snap.exists()) return alert("This Username already exists.");
-    await setDoc(doc(db, "users", u), { 
-        password: p, 
-        pin: pin, 
-        appointments:[], products:[], bills:[], offers:[], totalSales:0, history:[], monthlySales:[]
-    });
-    alert("Account created successfully! Please Login now.");
-    $('regUser').value = $('regPass').value = $('regPin').value = '';
-    window.showLogin(); 
+    
+    try {
+        const snap = await getDoc(doc(db, "users", u));
+        if (snap.exists()) return alert("This Username already exists.");
+        
+        await setDoc(doc(db, "users", u), { 
+            password: p, 
+            pin: pin, 
+            appointments:[], products:[], bills:[], offers:[], totalSales:0, history:[], monthlySales:[]
+        });
+        alert("Account created successfully! Please Login now.");
+        $('regUser').value = $('regPass').value = $('regPin').value = '';
+        window.showLogin(); 
+    } catch(error) {
+        console.error("Registration Error:", error);
+        alert("Registration failed due to a database error: " + error.message);
+    }
   }
 
   window.loginUser = async function() {
     let u = $('logUser').value.trim(), p = $('logPass').value;
-    const snap = await getDoc(doc(db, "users", u));
     
-    if(snap.exists() && snap.data().password === p){ 
-        currentUser = u; 
-        localStorage.setItem("currentUser", u);
-        alert("Welcome, "+u+"! Loading Dashboard..."); 
+    try {
+        const snap = await getDoc(doc(db, "users", u));
         
-        navEl.classList.remove('hidden'); 
-        window.showTab('appointments', document.querySelector("nav button:nth-child(1)"));
-        loadDashboardData();
+        if(snap.exists() && snap.data().password === p){ 
+            currentUser = u; 
+            localStorage.setItem("currentUser", u);
+            alert("Welcome, "+u+"! Loading Dashboard..."); 
+            
+            $('mainNav').classList.remove('hidden'); 
+            window.showTab('appointments', document.querySelector("nav button:nth-child(1)"));
+            loadDashboardData();
+        }
+        else alert("Invalid username or password.");
+    } catch(error) {
+        console.error("Login Error:", error);
+        alert("Login failed due to a database error: " + error.message);
     }
-    else alert("Invalid username or password.");
   }
 
   window.logoutUser = function() {
@@ -521,8 +567,8 @@ th {
       currentUserData = {};
       alert("Logged out successfully.");
       
-      navEl.classList.add('hidden'); 
-      window.showTab('auth', document.querySelector("#auth"));
+      $('mainNav').classList.add('hidden'); 
+      window.showTab('auth');
       window.showLogin(); 
       
       document.querySelectorAll("table").forEach(t => t.innerHTML = '<tr><th>Header</th></tr>');
@@ -538,7 +584,7 @@ th {
   }
   
   // --- Pin Verification ---
-  async function verifyOwnerPin() {
+  window.verifyOwnerPin = async function() {
     if (!currentUser) return false;
     const inputPin = prompt("Enter Owner Pin to confirm this action:");
     if (!inputPin) return false;
@@ -553,12 +599,7 @@ th {
   }
 
   // --- Rendering Functions ---
-  async function uploadPhoto(file, path) {
-    if (!file) return null;
-    const storageRef = ref(storage, `${currentUser}/${path}/${new Date().getTime()}_${file.name}`);
-    const snapshot = await uploadBytes(storageRef, file);
-    return getDownloadURL(snapshot.ref);
-  }
+
 
   // Rendering for Products
   function renderProducts(prods) {
@@ -570,6 +611,7 @@ th {
       prods.forEach(prod => {
           const card = document.createElement('div');
           card.className = 'feed-card';
+          // FIX: prod.photoURL ab Base64 data hai, seedha src mein istemaal ho raha hai
           card.innerHTML = `
               <img src="${prod.photoURL || 'https://via.placeholder.com/80?text=No+Photo'}" class="feed-image" alt="${prod.name}">
               <div class="feed-content">
@@ -597,6 +639,7 @@ th {
       offers.forEach(offer => {
           const card = document.createElement('div');
           card.className = 'feed-card';
+          // FIX: offer.photoURL ab Base64 data hai, seedha src mein istemaal ho raha hai
           card.innerHTML = `
               <img id="offerImage-${offer.title.replace(/\s/g, '-')}" src="${offer.photoURL || 'https://via.placeholder.com/80?text=Offer'}" class="feed-image" alt="${offer.title}">
               <div class="feed-content">
@@ -715,9 +758,8 @@ th {
   }
 
 
-  // --- Data Management Functions ---
+  // --- Data Management Functions (Made Global) ---
   
-  // Appointment Management (New)
   window.manageAppointment = async function(date, time, newStatus) {
       if (!currentUser) return;
 
@@ -737,7 +779,6 @@ th {
 
       await updateDoc(doc(db, "users", currentUser), { appointments: newAppointments });
 
-      // Update the UI element (Delete button visibility)
       const deleteBtnId = `del-${date}-${time}`.replace(/[:-\s]/g, '');
       const deleteBtn = $(deleteBtnId);
 
@@ -753,10 +794,9 @@ th {
       currentUserData.appointments = newAppointments;
   }
   
-  // Delete Appointment (Updated to be called separately)
   window.deleteAppointment = async function(date, time) {
       if (!currentUser) return;
-      if (!await verifyOwnerPin()) return; // Pin Check
+      if (!await verifyOwnerPin()) return; 
       
       const apptToRemove = currentUserData.appointments.find(a => a.date === date && a.time === time);
       if (apptToRemove) {
@@ -767,7 +807,6 @@ th {
   }
 
 
-  // Product/Offer Removal (Pin Protected)
   window.removeProduct = async function(name) {
       if (!currentUser) return;
       if (!await verifyOwnerPin()) return; 
@@ -800,7 +839,7 @@ th {
         service:$('service').value.trim(), 
         date:$('apptDate').value, 
         time:$('apptTime').value,
-        status: 'Pending' // Set default status
+        status: 'Pending' 
     };
     if (!appt.customer || !appt.service || !appt.date || !appt.time) return alert("Please fill all appointment details.");
     
@@ -820,16 +859,16 @@ th {
 
     let photoURL = null;
     if (photoFile) {
-        alert("Image is uploading, please wait...");
+        alert("Image ko local storage mein tayyar kiya jaa raha hai...");
         try {
-            photoURL = await uploadPhoto(photoFile, 'products');
+            photoURL = await fileToBase64(photoFile);
         } catch (e) {
-            alert("Image upload failed: " + e.message);
+            alert("Image processing failed: " + e.message);
             return;
         }
     }
     
-    let prod = { name, price, photoURL };
+    let prod = { name, price, photoURL }; 
     
     await updateDoc(doc(db,"users",currentUser), { products: arrayUnion(prod) });
     alert("Product/Service added successfully.");
@@ -848,16 +887,16 @@ th {
 
     let photoURL = null;
     if (photoFile) {
-        alert("Image is uploading, please wait...");
+        alert("Image ko local storage mein tayyar kiya jaa raha hai...");
         try {
-            photoURL = await uploadPhoto(photoFile, 'offers');
+            photoURL = await fileToBase64(photoFile);
         } catch (e) {
-            alert("Image upload failed: " + e.message);
+            alert("Image processing failed: " + e.message);
             return;
         }
     }
 
-    let offer = { title, discount, photoURL };
+    let offer = { title, discount, photoURL }; 
     await updateDoc(doc(db,"users",currentUser), { offers: arrayUnion(offer) });
     alert("Offer added successfully.");
     $('offerTitle').value = $('offerDisc').value = '';
@@ -904,6 +943,8 @@ th {
     };
 
     const newTotalSales = (currentUserData.totalSales || 0) + finalTotal;
+
+    $('billReceiptHeader').innerText = `SALON BILL RECEIPT - ${new Date().toLocaleDateString()}`;
 
     // 1. Generate Image Receipt using html2canvas
     try {
@@ -953,6 +994,7 @@ th {
     $('billTotal').innerText="0.00";
     $('billCustName').value = '';
     $('billCustPhone').value = '';
+    $('billReceiptHeader').innerText = `SALON BILL RECEIPT`; 
     
     loadDashboardData();
   }
@@ -987,7 +1029,7 @@ th {
       const salesData = currentUserData.monthlySales || [];
       if (salesData.length === 0) return alert("No sales data in history to generate PDF.");
 
-      const doc = new jsPDF();
+      const doc = new jsPDF(); 
       const shopName = `SALON MANAGER PRO - ${currentUser.toUpperCase()}`;
       const title = "Monthly Sales Statement";
       
@@ -1010,7 +1052,12 @@ th {
           grandTotal += sale.amount;
       });
 
-      doc.autoTable(tableColumn, tableRows, { startY: 45 });
+      doc.autoTable({
+        head: [tableColumn], 
+        body: tableRows, 
+        startY: 45,
+        theme: 'striped'
+      });
       
       const finalY = doc.autoTable.previous.finalY;
       doc.setFontSize(12);
@@ -1033,7 +1080,7 @@ th {
 
       switch(shareOption.trim()) {
           case '1': 
-              const waLink = `https://wa.me/?text=${encodeURIComponent(shareText + "\n\n(View offer image here: " + photoURL + ")")}`;
+              const waLink = `https://wa.me/?text=${encodeURIComponent(shareText + "\n\n(No image available for WhatsApp share, please copy/save the image separately)")}`;
               window.open(waLink, '_blank');
               break;
           case '2': 
