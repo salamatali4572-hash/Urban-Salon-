@@ -397,6 +397,7 @@ th {
 
 
   // --- Firebase Config (Please replace with your actual keys if needed) ---
+  // Note: If registration still fails, you MUST check the Firestore Security Rules
   const firebaseConfig = {
     apiKey: "AIzaSyBBFGIwiuzXNFrJ7kRe1rNauKqolIVMVI4",
     authDomain: "upsm-107f6.firebaseapp.com",
@@ -416,10 +417,9 @@ th {
 
   // DOM Elements
   const $ = (id) => document.getElementById(id);
-  // FIX: navEl ko ab declare kiya gaya hai
-  let navEl;
+  let navEl; // Declared globally in the module scope
 
-  // --- NEW: Utility Function for Local Image Storage (Base64) ---
+  // --- Utility Function for Local Image Storage (Base64) ---
   function fileToBase64(file) {
       return new Promise((resolve, reject) => {
           if (!file) {
@@ -441,7 +441,6 @@ th {
         const snap = await getDoc(doc(db, "users", currentUser));
         if (!snap.exists()) {
             console.error("User document not found for:", currentUser);
-            // Agar user ka document nahi milta to usko logout kar dena chahiye
             logoutUser();
             return;
         }
@@ -461,7 +460,7 @@ th {
     }
   }
 
-  // Navigation
+  // Navigation (Made Global)
   window.showTab = function(id, btn) {
     document.querySelectorAll("section").forEach(sec => sec.classList.remove("active"));
     document.querySelectorAll("#mainNav button").forEach(b => b.classList.remove("active"));
@@ -488,13 +487,12 @@ th {
         loadDashboardData();
       } else {
         navEl.classList.add('hidden'); 
-        // Agar currentUser nahi hai to seedha auth section dikhana hai
         window.showTab('auth');
         window.showLogin(); 
       }
   }
   
-  // FIX: DOMContentLoaded event listener lagaya gaya hai
+  // DOMContentLoaded ensures buttons and elements are ready
   window.addEventListener('DOMContentLoaded', initialCheck);
 
   
@@ -525,6 +523,7 @@ th {
         const snap = await getDoc(doc(db, "users", u));
         if (snap.exists()) return alert("This Username already exists.");
         
+        // This setDoc call is where the Firebase Security Rule (Permission Denied) might occur.
         await setDoc(doc(db, "users", u), { 
             password: p, 
             pin: pin, 
@@ -535,7 +534,8 @@ th {
         window.showLogin(); 
     } catch(error) {
         console.error("Registration Error:", error);
-        alert("Registration failed due to a database error: " + error.message);
+        // If 'Permission Denied' appears here, the issue is 100% with the Firestore Rules.
+        alert("Registration failed! Check your Firebase Firestore Rules. Error: " + error.message);
     }
   }
 
@@ -583,7 +583,7 @@ th {
     else alert("Wrong username or Owner Pin!");
   }
   
-  // --- Pin Verification ---
+  // --- Pin Verification (Made Global) ---
   window.verifyOwnerPin = async function() {
     if (!currentUser) return false;
     const inputPin = prompt("Enter Owner Pin to confirm this action:");
@@ -598,10 +598,8 @@ th {
     }
   }
 
-  // --- Rendering Functions ---
+  // --- Rendering Functions (Internal) ---
 
-
-  // Rendering for Products
   function renderProducts(prods) {
       const feed = $('prodFeed');
       feed.innerHTML = ''; 
@@ -611,7 +609,6 @@ th {
       prods.forEach(prod => {
           const card = document.createElement('div');
           card.className = 'feed-card';
-          // FIX: prod.photoURL ab Base64 data hai, seedha src mein istemaal ho raha hai
           card.innerHTML = `
               <img src="${prod.photoURL || 'https://via.placeholder.com/80?text=No+Photo'}" class="feed-image" alt="${prod.name}">
               <div class="feed-content">
@@ -631,7 +628,6 @@ th {
       });
   }
 
-  // Rendering for Offers
   function renderOffers(offers) {
       const feed = $('offerFeed');
       feed.innerHTML = ''; 
@@ -639,7 +635,6 @@ th {
       offers.forEach(offer => {
           const card = document.createElement('div');
           card.className = 'feed-card';
-          // FIX: offer.photoURL ab Base64 data hai, seedha src mein istemaal ho raha hai
           card.innerHTML = `
               <img id="offerImage-${offer.title.replace(/\s/g, '-')}" src="${offer.photoURL || 'https://via.placeholder.com/80?text=Offer'}" class="feed-image" alt="${offer.title}">
               <div class="feed-content">
@@ -655,7 +650,6 @@ th {
       });
   }
 
-  // --- Rendering Appointments (Updated with Status and Delete) ---
   function renderAppointments(apts) {
       const initialHTML = `<tr><th>Customer</th><th>Service</th><th>Date</th><th>Time</th><th>Status</th><th>Delete</th></tr>`;
       const table = $('apptTable');
@@ -663,10 +657,7 @@ th {
 
       apts.forEach(appt => {
           const row = table.insertRow(-1);
-          // Create a unique ID for the delete button using date and time
           const deleteBtnId = `del-${appt.date}-${appt.time}`.replace(/[:-\s]/g, '');
-
-          // Determine the correct status (use 'Pending' if not set)
           const currentStatus = appt.status || 'Pending'; 
 
           row.innerHTML = `
@@ -693,7 +684,6 @@ th {
       });
   }
 
-  // General Table Renderer
   function renderTable(tableId, data, rowRenderer, initialHTML) {
       const table = $(tableId);
       table.innerHTML = initialHTML;
@@ -703,7 +693,6 @@ th {
       });
   }
 
-  // Rendering for Monthly Sales
   function renderMonthlySales(salesData) { 
       const initialHTML = `<tr><th>Date</th><th>Sales Amount</th></tr>`;
       renderTable('monthlySalesTable', salesData, (sale) => 
@@ -711,7 +700,6 @@ th {
       , initialHTML);
   }
 
-  // Rendering for History and Customer List
   function renderHistory(history) {
       const histInitialHTML = `<tr><th>Customer</th><th>Phone</th><th>Total Bill</th><th>Date</th></tr>`;
       renderTable('histTable', history, (bill) => 
@@ -977,7 +965,7 @@ th {
 
     // 3. Optional WhatsApp Text Receipt
     if (cleanPhone && cleanPhone.length >= 10) {
-        let msgText = `*Salon Receipt - ${currentUser}*\n\n`;
+        let msgText = `*Salon Receipt - ${currentUser}'s Salon!*\n\n`;
         msgText += `Dear ${customerName},\n`;
         msgText += `Your Total: *Rs. ${finalTotal.toFixed(2)}*\n`;
         msgText += `Date: ${new Date().toLocaleDateString()}\n\n`;
