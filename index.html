@@ -176,6 +176,21 @@ th {
     background: #c9302c;
 }
 
+/* Resend Button */
+.resend-btn {
+    background: var(--whatsapp);
+    color: white;
+    padding: 5px 10px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    margin-right: 5px;
+}
+.resend-btn:hover {
+    background: #128c7e;
+}
+
 /* --- Other Sections CSS --- */
 .hidden { display: none !important; }
 .scrollable-feed {
@@ -373,15 +388,12 @@ th {
 }
 </style>
 
-<!-- Firebase CDN (No Module System Needed) -->
 <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore-compat.js"></script>
 
-<!-- html2canvas for receipt generation -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
-<!-- jsPDF for PDF generation -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 </head>
@@ -398,6 +410,7 @@ th {
   <button onclick="showTab('billing', this)">Billing</button>
   <button onclick="showTab('sales', this)">Sales</button>
   <button onclick="showTab('history', this)">Customers & History</button>
+  <button class="action" onclick="showTab('settings', this)" style="background: #6c757d;">Settings ⚙️</button>
   <button class="action" onclick="logoutUser()">Logout</button>
 </nav>
 
@@ -429,6 +442,18 @@ th {
     <button class="action" onclick="forgotPassword()">Send Reset Email</button>
     <button class="auth-link-button" onclick="showLogin()">← Back to Login</button>
   </div>
+</section>
+
+<section id="settings">
+    <h2>Salon Settings ⚙️</h2>
+    <h3>Business Information</h3>
+    <input id="salonNameInput" placeholder="Salon Name (for Receipts)">
+    <input id="salonPhoneInput" placeholder="Contact Phone (for Receipts/WhatsApp)">
+    <button class="action" onclick="saveSalonInfo()">Save Salon Info</button>
+    
+    <h3 style="margin-top: 30px;">User Account</h3>
+    <p>Your Admin Email: <span id="userEmailDisplay" style="font-weight: bold;"></span></p>
+    <button class="action" onclick="promptChangePin()" style="background: #ffc107; color: #000;">Change Owner Pin</button>
 </section>
 
 <section id="appointments">
@@ -513,7 +538,7 @@ th {
       NET TOTAL: <span id="billTotal" style="color:var(--primary-blue);">0.00</span>
     </h3>
     <div class="branding-footer">
-        Powered by Ali (03091539086)
+        Salon Contact: <span id="brandingPhone">03091539086</span>
     </div>
   </div>
   
@@ -572,11 +597,10 @@ th {
 
   <h2 style="margin-top: 30px;">Transaction History 📜</h2>
   <table id="histTable">
-    <tr><th>Customer</th><th>Phone</th><th>Total Bill</th><th>Date</th></tr>
+    <tr><th>Customer</th><th>Phone</th><th>Total Bill</th><th>Date</th><th>Actions</th></tr>
   </table>
 </section>
 
-<!-- Share Modal -->
 <div id="shareModal" class="share-modal">
     <div class="share-modal-content">
         <h3>Share Offer</h3>
@@ -696,16 +720,23 @@ function closeShareModal() {
     currentShareOffer = null;
 }
 
+function getSalonName() {
+    return currentUserData.salonName || currentUserData.email || "Our Salon";
+}
+
+function getSalonPhone() {
+    return currentUserData.phone || "03091539086";
+}
+
 function shareOnWhatsApp() {
     if (!currentShareOffer) return;
     
-    const shopName = currentUserData.email || "Our Salon";
-    const shareText = `*🔥 Exclusive Offer at ${shopName}! 🔥*\n\n` +
+    const shareText = `*🔥 Exclusive Offer at ${getSalonName()}! 🔥*\n\n` +
                      `🎉 *${currentShareOffer.title}*\n` +
                      `💫 Get *${currentShareOffer.discount}% OFF* on selected services!\n\n` +
                      `✨ Don't miss this amazing opportunity!\n` +
                      `📍 Visit us today!\n\n` +
-                     `_Powered by Ali (03091539086)_`;
+                     `_Contact: ${getSalonPhone()}_`;
     
     const encodedMessage = encodeURIComponent(shareText);
     const waLink = `https://wa.me/?text=${encodedMessage}`;
@@ -716,7 +747,7 @@ function shareOnWhatsApp() {
 function shareOnFacebook() {
     if (!currentShareOffer) return;
     
-    const shareText = `Check out this amazing offer: ${currentShareOffer.title} - ${currentShareOffer.discount}% OFF!`;
+    const shareText = `Check out this amazing offer: ${currentShareOffer.title} - ${currentShareOffer.discount}% OFF! At ${getSalonName()}`;
     const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}&quote=${encodeURIComponent(shareText)}`;
     window.open(facebookUrl, '_blank', 'width=600,height=400');
     closeShareModal();
@@ -730,13 +761,12 @@ function shareOnInstagram() {
 function copyOfferText() {
     if (!currentShareOffer) return;
     
-    const shopName = currentUserData.email || "Our Salon";
-    const offerText = `🔥 Exclusive Offer at ${shopName}! 🔥\n\n` +
+    const offerText = `🔥 Exclusive Offer at ${getSalonName()}! 🔥\n\n` +
                      `🎉 ${currentShareOffer.title}\n` +
                      `💫 Get ${currentShareOffer.discount}% OFF on selected services!\n\n` +
                      `✨ Don't miss this amazing opportunity!\n` +
                      `📍 Visit us today!\n\n` +
-                     `Powered by Ali (03091539086)`;
+                     `Contact: ${getSalonPhone()}`;
     
     navigator.clipboard.writeText(offerText).then(() => {
         alert('Offer text copied to clipboard!');
@@ -758,60 +788,74 @@ function updateReceiptDisplay() {
     const customerName = $('#billCustName').value.trim() || "Walk-in Customer";
     const customerPhone = $('#billCustPhone').value.trim() || "N/A";
     
+    $('#billReceiptHeader').textContent = getSalonName();
     $('#receiptCustomer').textContent = customerName;
     $('#receiptPhone').textContent = customerPhone;
     $('#receiptDate').textContent = new Date().toLocaleString();
+    $('#brandingPhone').textContent = getSalonPhone();
 }
 
-async function shareReceiptOnWhatsApp() {
-    if (billItems.length === 0) {
-        alert("Please add items to the bill first.");
-        return;
+function getReceiptMessage(bill, includeContact = true) {
+    const finalTotal = bill.total;
+    const customerName = bill.customer;
+    const customerPhone = bill.phone;
+    
+    let message = `*💈 ${getSalonName()} - Receipt 💈*\n\n`;
+    message += `*Customer:* ${customerName}\n`;
+    message += `*Date:* ${bill.date}\n\n`;
+    message += `*Items:*\n`;
+    
+    bill.items.forEach(item => {
+        message += `• ${item.name} x ${item.quantity} = Rs. ${item.total.toFixed(2)}\n`;
+    });
+    
+    message += `\n*💰 Total Amount: Rs. ${finalTotal.toFixed(2)}*\n\n`;
+    message += `Thank you for your business! 🎉\n`;
+    
+    if (includeContact) {
+        message += `_Contact: ${getSalonPhone()}_`;
+    }
+    return message;
+}
+
+async function shareReceiptOnWhatsApp(bill = null) {
+    let currentBill = bill;
+    let isCurrentBill = false;
+    
+    if (!currentBill) {
+        if (billItems.length === 0) {
+            alert("Please add items to the bill first.");
+            return;
+        }
+        const finalTotal = billItems.reduce((s,i) => s + i.total, 0);
+        currentBill = {
+            customer: $('#billCustName').value.trim() || "Walk-in Customer",
+            phone: $('#billCustPhone').value.trim(),
+            total: finalTotal,
+            date: new Date().toLocaleString(),
+            items: billItems
+        };
+        isCurrentBill = true;
     }
     
-    try {
-        // Generate receipt image
-        const receiptElement = $('#billReceipt');
-        const canvas = await html2canvas(receiptElement, {
-            scale: 2,
-            logging: false,
-            useCORS: true,
-            backgroundColor: '#ffffff'
-        });
-        
-        const receiptImage = canvas.toDataURL('image/png');
-        
-        // Create WhatsApp message
-        const customerName = $('#billCustName').value.trim() || "Walk-in Customer";
-        const customerPhone = $('#billCustPhone').value.trim();
-        const finalTotal = billItems.reduce((s,i) => s + i.total, 0);
-        
-        let message = `*💈 Salon Receipt 💈*\n\n`;
-        message += `*Customer:* ${customerName}\n`;
-        message += `*Date:* ${new Date().toLocaleString()}\n\n`;
-        message += `*Items:*\n`;
-        
-        billItems.forEach(item => {
-            message += `• ${item.name} x ${item.quantity} = Rs. ${item.total.toFixed(2)}\n`;
-        });
-        
-        message += `\n*💰 Total Amount: Rs. ${finalTotal.toFixed(2)}*\n\n`;
-        message += `Thank you for your business! 🎉\n`;
-        message += `_Powered by Ali (03091539086)_`;
-        
-        if (customerPhone) {
-            // Send to specific customer
-            const encodedMessage = encodeURIComponent(message);
-            const waLink = `https://wa.me/${customerPhone}?text=${encodedMessage}`;
-            window.open(waLink, '_blank');
+    const customerPhone = currentBill.phone;
+    const message = getReceiptMessage(currentBill);
+    
+    if (customerPhone && /^\+?\d{7,15}$/.test(customerPhone)) {
+        // Send to specific customer
+        const encodedMessage = encodeURIComponent(message);
+        const waLink = `https://wa.me/${customerPhone}?text=${encodedMessage}`;
+        window.open(waLink, '_blank');
+    } else {
+        if (isCurrentBill) {
+            alert('Please enter a valid customer phone number to send via WhatsApp, or take a screenshot of the receipt.');
         } else {
-            // Share generally
-            alert('Please enter customer phone number to send via WhatsApp, or take a screenshot of the receipt.');
+            // History resend, no phone number available
+            const encodedMessage = encodeURIComponent(message);
+            const waLink = `https://wa.me/?text=${encodedMessage}`;
+            alert('No valid phone number found for this transaction. Sharing text generally.');
+            window.open(waLink, '_blank');
         }
-        
-    } catch (error) {
-        console.error('Error generating receipt:', error);
-        alert('Error generating receipt. Please try again.');
     }
 }
 
@@ -834,7 +878,7 @@ function downloadReceipt() {
     });
 }
 
-// PDF Generation Functions
+// PDF Generation Functions (Omitted for brevity in response, keeping originals)
 function generateMonthlyPDF() {
     if (!currentUserUID) {
         alert("Please login first.");
@@ -859,7 +903,7 @@ function generateMonthlyPDF() {
     // PDF Header
     doc.setFontSize(20);
     doc.setTextColor(40, 40, 40);
-    doc.text("SALON MANAGER PRO", 105, 20, { align: 'center' });
+    doc.text(getSalonName().toUpperCase(), 105, 20, { align: 'center' });
     
     doc.setFontSize(16);
     doc.text(`Monthly Report - ${monthNames[month]} ${year}`, 105, 30, { align: 'center' });
@@ -914,7 +958,7 @@ function generateMonthlyPDF() {
     // Footer
     doc.setFontSize(10);
     doc.setTextColor(150, 150, 150);
-    doc.text("Powered by Ali (03091539086)", 105, 280, { align: 'center' });
+    doc.text(`Contact: ${getSalonPhone()}`, 105, 280, { align: 'center' });
     
     // Save PDF
     doc.save(`salon-report-${monthNames[month]}-${year}.pdf`);
@@ -932,7 +976,7 @@ function generateCompletePDF() {
     // PDF Header
     doc.setFontSize(20);
     doc.setTextColor(40, 40, 40);
-    doc.text("SALON MANAGER PRO", 105, 20, { align: 'center' });
+    doc.text(getSalonName().toUpperCase(), 105, 20, { align: 'center' });
     
     doc.setFontSize(16);
     doc.text("Complete Business Report", 105, 30, { align: 'center' });
@@ -1015,11 +1059,12 @@ function generateCompletePDF() {
     // Footer
     doc.setFontSize(10);
     doc.setTextColor(150, 150, 150);
-    doc.text("Powered by Ali (03091539086)", 105, 280, { align: 'center' });
+    doc.text(`Contact: ${getSalonPhone()}`, 105, 280, { align: 'center' });
     
     // Save PDF
     doc.save(`salon-complete-report-${new Date().getTime()}.pdf`);
 }
+
 
 // Navigation Functions
 function showTab(id, btn) {
@@ -1049,6 +1094,11 @@ function showTab(id, btn) {
     // Load specific data for each tab
     if (currentUserUID) {
         switch(id) {
+            case 'settings':
+                $('userEmailDisplay').textContent = currentUserData.email;
+                $('salonNameInput').value = currentUserData.salonName || '';
+                $('salonPhoneInput').value = currentUserData.phone || '';
+                break;
             case 'appointments':
                 renderAppointments(currentUserData.appointments || []);
                 break;
@@ -1112,7 +1162,9 @@ async function registerUser() {
             offers: [], 
             totalSales: 0, 
             history: [], 
-            monthlySales: [] 
+            monthlySales: [],
+            salonName: "My Salon", // Default Name
+            phone: "03091539086" // Default Phone
         });
         
         alert("Account created successfully!");
@@ -1197,6 +1249,58 @@ auth.onAuthStateChanged((user) => {
     }
 });
 
+// Settings Functions
+async function saveSalonInfo() {
+    if (!currentUserUID) return alert("Please log in first.");
+    
+    const salonName = $('salonNameInput').value.trim();
+    const phone = $('salonPhoneInput').value.trim();
+    
+    if (!salonName || !phone) return alert("Please enter both Salon Name and Contact Phone.");
+    
+    try {
+        await db.collection("users").doc(currentUserUID).update({
+            salonName: salonName,
+            phone: phone
+        });
+        alert("Salon Information saved successfully!");
+        loadDashboardData(); // Reload data to update all displays
+    } catch (error) {
+        console.error("Error saving salon info:", error);
+        alert("Failed to save salon information.");
+    }
+}
+
+async function promptChangePin() {
+    if (!currentUserUID) return;
+    
+    const oldPin = prompt("Enter your CURRENT Owner Pin:");
+    if (!oldPin) return;
+
+    // Verify current pin first
+    try {
+        const userDoc = await db.collection("users").doc(currentUserUID).get();
+        if(userDoc.exists && userDoc.data().pin === oldPin) {
+            const newPin = prompt("Enter your NEW Owner Pin (up to 6 digits):");
+            if (!newPin || newPin.length > 6 || !/^\d+$/.test(newPin)) {
+                 return alert("Invalid new Pin. Must be up to 6 digits.");
+            }
+            
+            await db.collection("users").doc(currentUserUID).update({
+                pin: newPin
+            });
+            alert("Owner Pin changed successfully!");
+            loadDashboardData();
+        } else {
+            alert("Invalid CURRENT Owner Pin!");
+        }
+    } catch(error) {
+        console.error("Error changing pin:", error);
+        alert("Error changing pin. Please try again.");
+    }
+}
+
+
 // Data Management
 async function loadDashboardData() {
     if (!currentUserUID) return;
@@ -1207,6 +1311,10 @@ async function loadDashboardData() {
         
         if (userDoc.exists) {
             currentUserData = userDoc.data();
+            // Default values if missing
+            currentUserData.salonName = currentUserData.salonName || "My Salon";
+            currentUserData.phone = currentUserData.phone || "03091539086";
+            
             console.log("User data loaded:", currentUserData);
             
             // Show dashboard
@@ -1400,11 +1508,14 @@ async function manageAppointment(date, time, newStatus) {
         return;
     }
     
-    const updatedAppt = { ...appointments[index], status: newStatus };
+    // Remove the old one and add the updated one
+    const oldAppt = appointments[index];
+    const updatedAppt = { ...oldAppt, status: newStatus };
     
     try {
+        // Atomic removal (though not strictly atomic with arrayUnion, it's safer than direct update)
         await db.collection("users").doc(currentUserUID).update({ 
-            appointments: firebase.firestore.FieldValue.arrayRemove(appointments[index]) 
+            appointments: firebase.firestore.FieldValue.arrayRemove(oldAppt) 
         });
         await db.collection("users").doc(currentUserUID).update({ 
             appointments: firebase.firestore.FieldValue.arrayUnion(updatedAppt) 
@@ -1446,7 +1557,7 @@ function addBillItem() {
         return;
     }
     
-    const productName = selectedProduct.text;
+    const productName = selectedProduct.text.split(' - ')[0]; // Extract name without price
     const productPrice = parseFloat(selectedProduct.value);
     const quantity = parseInt($('billQty').value) || 1;
     
@@ -1454,7 +1565,7 @@ function addBillItem() {
     billItems.push({ name: productName, price: productPrice, quantity: quantity, total: total });
     
     const billTable = $('billTable');
-    const newRow = billTable.insertRow();
+    const newRow = billTable.insertRow(billTable.rows.length); // Add at the end
     newRow.innerHTML = `
         <td>${productName}</td>
         <td>${quantity}</td>
@@ -1478,9 +1589,10 @@ async function saveBill(){
     const customerPhone = $('billCustPhone').value.trim(); 
     
     let bill = { 
+        id: Date.now(), // Unique ID for deletion/resend
         customer: customerName,
         phone: customerPhone, 
-        items: billItems, 
+        items: JSON.parse(JSON.stringify(billItems)), // Deep copy items
         total: finalTotal, 
         date: new Date().toLocaleString() 
     };
@@ -1490,48 +1602,22 @@ async function saveBill(){
     try {
         // Save to Firebase
         await db.collection("users").doc(currentUserUID).update({ 
-            bills: firebase.firestore.FieldValue.arrayUnion(bill),
+            // Note: Bills are not strictly needed, history is sufficient, but keeping for consistency
             history: firebase.firestore.FieldValue.arrayUnion(bill),
             totalSales: newTotalSales 
         });
 
-        // Simple receipt
-        let receiptText = `SALON BILL RECEIPT\n`;
-        receiptText += `Date: ${new Date().toLocaleString()}\n`;
-        receiptText += `Customer: ${customerName}\n`;
-        receiptText += `Phone: ${customerPhone}\n\n`;
-        receiptText += `ITEMS:\n`;
-        billItems.forEach(item => {
-            receiptText += `${item.name} x ${item.quantity} = Rs. ${item.total.toFixed(2)}\n`;
-        });
-        receiptText += `\nTOTAL: Rs. ${finalTotal.toFixed(2)}`;
-        
-        alert(`Bill of Rs. ${finalTotal.toFixed(2)} saved!\n\n${receiptText}`);
-        
         // WhatsApp sharing
-        if (customerPhone) {
-            let msgText = `*Salon Receipt - ${currentUserData.email}*\n\n`;
-            msgText += `Customer: ${customerName}\n`;
-            msgText += `Date: ${new Date().toLocaleString()}\n\n`;
-            msgText += `*Items:*\n`;
-            billItems.forEach(item => {
-                msgText += `• ${item.name} x ${item.quantity} = Rs. ${item.total.toFixed(2)}\n`;
-            });
-            msgText += `\n*Total Amount: Rs. ${finalTotal.toFixed(2)}*\n\n`;
-            msgText += `Thank you for your business! 💈\n`;
-            msgText += `_Powered by Ali (03091539086)_`;
-            
-            const encodedMessage = encodeURIComponent(msgText);
-            const waLink = `https://wa.me/${customerPhone}?text=${encodedMessage}`;
-            window.open(waLink, '_blank');
-        }
+        await shareReceiptOnWhatsApp(bill);
+
+        alert(`Bill of Rs. ${finalTotal.toFixed(2)} saved!`);
 
         // Reset
         billItems = []; 
         $('billTable').innerHTML = "<tr><th>Product</th><th>Qty</th><th>Price</th><th>Total</th></tr>";
         $('billTotal').innerText = "0.00";
         $('billCustName').value = $('billCustPhone').value = '';
-        $('billReceiptHeader').innerText = `SALON BILL RECEIPT`; 
+        updateReceiptDisplay(); // Reset receipt info
         
         loadDashboardData();
     } catch(error) {
@@ -1569,6 +1655,26 @@ async function closeDay() {
         alert("Failed to close day. Please try again.");
     }
 }
+
+// History Functions
+async function deleteHistoryItem(bill) {
+    if (!currentUserUID) return;
+    if (!await verifyOwnerPin()) return; 
+
+    if (confirm(`Are you sure you want to delete the transaction for ${bill.customer} (Rs. ${bill.total.toFixed(2)})? This cannot be undone.`)) {
+        try {
+            await db.collection("users").doc(currentUserUID).update({ 
+                history: firebase.firestore.FieldValue.arrayRemove(bill) 
+            });
+            alert("Transaction deleted successfully.");
+            loadDashboardData();
+        } catch(error) {
+            console.error("Error deleting transaction:", error);
+            alert("Failed to delete transaction. Please try again.");
+        }
+    }
+}
+
 
 // Pin Verification
 async function verifyOwnerPin() {
@@ -1705,11 +1811,11 @@ function renderHistory(history) {
     
     if (!table || !customerList) return;
     
-    table.innerHTML = `<tr><th>Customer</th><th>Phone</th><th>Total Bill</th><th>Date</th></tr>`;
+    table.innerHTML = `<tr><th>Customer</th><th>Phone</th><th>Total Bill</th><th>Date</th><th>Actions</th></tr>`;
     customerList.innerHTML = '';
     
     if (history.length === 0) {
-        table.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#999;">No transaction history found</td></tr>`;
+        table.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#999;">No transaction history found</td></tr>`;
         customerList.innerHTML = '<div style="text-align:center; color:#999; padding:20px;">No customers found</div>';
         return;
     }
@@ -1748,12 +1854,17 @@ function renderHistory(history) {
     // Render transaction history
     history.sort((a, b) => new Date(b.date) - new Date(a.date))
           .forEach(bill => {
+        const billJson = JSON.stringify(bill).replace(/"/g, '&quot;');
         const row = table.insertRow();
         row.innerHTML = `
             <td>${bill.customer}</td>
             <td>${bill.phone || 'N/A'}</td>
             <td>Rs. ${bill.total.toFixed(2)}</td>
             <td>${bill.date}</td>
+            <td>
+                <button class="resend-btn" onclick="shareReceiptOnWhatsApp(${billJson})">Resend 📱</button>
+                <button class="delete-btn" onclick="deleteHistoryItem(${billJson})">Delete</button>
+            </td>
         `;
     });
 }
@@ -1865,6 +1976,9 @@ window.shareOnInstagram = shareOnInstagram;
 window.copyOfferText = copyOfferText;
 window.shareReceiptOnWhatsApp = shareReceiptOnWhatsApp;
 window.downloadReceipt = downloadReceipt;
+window.saveSalonInfo = saveSalonInfo;
+window.promptChangePin = promptChangePin;
+window.deleteHistoryItem = deleteHistoryItem;
 </script>
 </body>
 </html>
