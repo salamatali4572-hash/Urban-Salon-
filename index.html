@@ -401,7 +401,7 @@ th {
 <body>
 
 <header>
-  <h1>Salon Manager Pro (Salamat Ali) 💇‍♂️</h1>
+  <h1> Salon Manager 💇‍♂️</h1>
   <div style="font-size: 10px; color: #666;">
     Powered by Ali (03091539086) &copy;2025
   </div>
@@ -517,7 +517,8 @@ th {
 <section id="billing">
   <h2>Create New Bill 🧾</h2>
   <div class="form-row">
-    <input id="billCustName" placeholder="Customer Name">
+    <input id="billCustName" placeholder="Customer Name" list="customerNames">
+    <datalist id="customerNames"></datalist>
     <input id="billCustPhone" placeholder="Customer Phone (for WhatsApp)">
   </div>
   <div class="form-row">
@@ -604,6 +605,12 @@ th {
 
 <section id="history">
   <h2>Customer List 🧑‍🤝‍🧑</h2>
+  <div class="form-row" style="gap: 5px; margin-bottom: 15px;">
+    <input id="customerSearchInput" placeholder="Search Customer Name" style="flex: 2;">
+    <button class="action" onclick="searchCustomer()" style="flex: 1; margin-top: 0; background: #6c757d;">Search 🔍</button>
+    <button class="action" onclick="promptAddCustomer()" style="flex: 1; margin-top: 0; background: var(--success-green);">Add New +</button>
+  </div>
+  
   <div id="customerList">
     </div>
 
@@ -1210,7 +1217,7 @@ function showTab(id, btn) {
                 $('totalSales').innerText = (currentUserData.totalSales || 0).toFixed(2);
                 break;
             case 'history':
-                renderHistory(currentUserData.history || []);
+                renderHistory(currentUserData.history || []); // Full list
                 break;
         }
     }
@@ -1778,7 +1785,97 @@ async function closeDay() {
     }
 }
 
-// History Functions
+// History/Customer Management Functions - ADDED/MODIFIED
+async function promptAddCustomer() {
+    if (!currentUserUID) return alert("Please log in first.");
+    if (!await verifyOwnerPin()) return; // Admin pin check
+
+    const name = prompt("Enter New Customer Name:");
+    if (!name || name.trim() === "") return;
+
+    const phone = prompt(`Enter Phone Number for ${name}:`);
+    if (!phone || phone.trim() === "") return;
+
+    // Save as a 'meta-history' item to record the customer
+    const newCustomerEntry = {
+        id: Date.now(),
+        customer: name.trim(),
+        phone: phone.trim(),
+        items: [], // Empty items array
+        subTotal: 0,
+        discountAmount: 0,
+        discountCode: "N/A",
+        total: 0,
+        date: new Date().toLocaleDateString() + " (Added Manually)"
+    };
+    
+    try {
+        await db.collection("users").doc(currentUserUID).update({
+            history: firebase.firestore.FieldValue.arrayUnion(newCustomerEntry)
+        });
+        alert(`Customer ${name} added successfully.`);
+        loadDashboardData();
+    } catch(error) {
+        console.error("Error adding customer:", error);
+        alert("Failed to add customer. Please try again.");
+    }
+}
+
+async function deleteCustomerByName(name) {
+    if (!currentUserUID) return;
+    if (!await verifyOwnerPin()) return;
+
+    if (confirm(`Are you sure you want to delete ALL transaction records for customer: ${name}? This cannot be undone.`)) {
+        try {
+            const history = currentUserData.history || [];
+            const updatedHistory = history.filter(bill => bill.customer !== name);
+
+            // Directly overwrite the history array with the filtered array
+            await db.collection("users").doc(currentUserUID).update({
+                history: updatedHistory
+            });
+            alert(`All records for customer ${name} deleted successfully.`);
+            loadDashboardData();
+        } catch (error) {
+            console.error("Error deleting customer records:", error);
+            alert("Failed to delete customer records. Please try again.");
+        }
+    }
+}
+
+function searchCustomer() {
+    const searchTerm = $('customerSearchInput').value.trim().toLowerCase();
+    renderHistory(currentUserData.history || [], searchTerm);
+}
+
+// Function to auto-fill phone when customer name is typed - ADDED
+function autoFillCustomerPhone() {
+    const customerName = $('billCustName').value.trim();
+    const customerPhoneInput = $('billCustPhone');
+    
+    const customers = {};
+    (currentUserData.history || []).forEach(bill => {
+        // Only record the phone if it's a valid string and not "N/A"
+        if (bill.phone && bill.phone.trim() !== '' && bill.phone.trim().toLowerCase() !== 'n/a') {
+            customers[bill.customer] = bill.phone.trim();
+        }
+    });
+
+    // If the customer name is found in the collected list, fill the phone number
+    if (customers[customerName]) {
+        customerPhoneInput.value = customers[customerName];
+    } else if (customerPhoneInput.value.trim() !== '') {
+        // If the customer name does not match, but the phone input already has text, don't clear it.
+        // The user might be typing a new customer's number.
+    } else {
+        // Clear the phone if the name doesn't match a stored customer and phone is empty
+        customerPhoneInput.value = '';
+    }
+    
+    // Always call this to ensure receipt totals and display are updated
+    updateReceiptDisplay(); 
+}
+
 async function deleteHistoryItem(bill) {
     if (!currentUserUID) return;
     if (!await verifyOwnerPin()) return; 
@@ -1819,7 +1916,7 @@ async function verifyOwnerPin() {
     }
 }
 
-// Rendering Functions
+// Rendering Functions - MODIFIED
 function renderAppointments(appointments) {
     const table = $('apptTable');
     if (!table) return;
@@ -1928,55 +2025,102 @@ function renderOffers(offers) {
     });
 }
 
-function renderHistory(history) {
+// MODIFIED renderHistory to support search and customer management
+function renderHistory(history, searchTerm = '') {
     const table = $('histTable');
-    const customerList = $('customerList');
+    const customerListDiv = $('customerList');
+    const customerNamesDatalist = $('customerNames');
     
-    if (!table || !customerList) return;
+    if (!table || !customerListDiv || !customerNamesDatalist) return;
     
     table.innerHTML = `<tr><th>Customer</th><th>Phone</th><th>Total Bill</th><th>Date</th><th>Actions</th></tr>`;
-    customerList.innerHTML = '';
-    
+    customerListDiv.innerHTML = '';
+    customerNamesDatalist.innerHTML = ''; // Clear datalist
+
     if (history.length === 0) {
         table.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#999;">No transaction history found</td></tr>`;
-        customerList.innerHTML = '<div style="text-align:center; color:#999; padding:20px;">No customers found</div>';
+        customerListDiv.innerHTML = '<div style="text-align:center; color:#999; padding:20px;">No customers found</div>';
         return;
     }
     
-    // Get unique customers
+    // 1. Process and filter unique customers
     const customers = {};
     history.forEach(bill => {
-        if (!customers[bill.customer]) {
-            customers[bill.customer] = {
-                phone: bill.phone,
-                totalSpent: 0,
-                lastVisit: bill.date
-            };
-        }
-        customers[bill.customer].totalSpent += bill.total;
-        if (new Date(bill.date) > new Date(customers[bill.customer].lastVisit)) {
-            customers[bill.customer].lastVisit = bill.date;
+        const name = bill.customer;
+        const phone = bill.phone || 'N/A';
+        
+        // Use the customer name as the key
+        if (name && name !== 'Walk-in Customer') {
+            if (!customers[name]) {
+                customers[name] = {
+                    phone: phone,
+                    totalSpent: 0,
+                    lastVisit: bill.date,
+                    historyCount: 0
+                };
+            }
+            // Only add to total spent if it was a real transaction
+            if (bill.total > 0) {
+                 customers[name].totalSpent += bill.total;
+                 customers[name].historyCount++;
+            }
+            
+            // Update last visit
+            if (new Date(bill.date) > new Date(customers[name].lastVisit)) {
+                customers[name].lastVisit = bill.date;
+            }
+            
+            // Update phone (to the latest recorded phone, if available)
+            if (phone !== 'N/A') {
+                 customers[name].phone = phone;
+            }
         }
     });
     
-    // Render customer list
-    Object.keys(customers).forEach(customer => {
-        const div = document.createElement('div');
-        div.className = 'feed-card';
-        div.innerHTML = `
-            <div style="flex:1;">
-                <h4 style="margin:0 0 5px 0;">${customer}</h4>
-                <p style="margin:0; font-size:12px;">Phone: ${customers[customer].phone || 'N/A'}</p>
-                <p style="margin:0; font-size:12px;">Total Spent: Rs. ${customers[customer].totalSpent.toFixed(2)}</p>
-                <p style="margin:0; font-size:12px;">Last Visit: ${customers[customer].lastVisit}</p>
-            </div>
-        `;
-        customerList.appendChild(div);
-    });
+    const customerArray = Object.keys(customers).map(name => ({ name, ...customers[name] }));
+
+    // 2. Render customer list (filtered by search term)
+    const filteredCustomers = customerArray.filter(cust => 
+        cust.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    if (filteredCustomers.length === 0 && searchTerm !== '') {
+        customerListDiv.innerHTML = `<div style="text-align:center; color:#999; padding:20px;">No customers found matching "${searchTerm}"</div>`;
+    } else if (filteredCustomers.length === 0) {
+        customerListDiv.innerHTML = '<div style="text-align:center; color:#999; padding:20px;">No recorded customers found</div>';
+    } else {
+        filteredCustomers.forEach(customer => {
+            const div = document.createElement('div');
+            div.className = 'feed-card';
+            div.innerHTML = `
+                <div style="flex:1;">
+                    <h4 style="margin:0 0 5px 0;">${customer.name}</h4>
+                    <p style="margin:0; font-size:12px;">Phone: ${customer.phone || 'N/A'}</p>
+                    <p style="margin:0; font-size:12px;">Total Transactions: ${customer.historyCount}</p>
+                    <p style="margin:0; font-size:12px; color:var(--primary-blue); font-weight:bold;">Total Spent: Rs. ${customer.totalSpent.toFixed(2)}</p>
+                    <p style="margin:0; font-size:12px;">Last Visit: ${customer.lastVisit}</p>
+                </div>
+                <div class="feed-actions">
+                    <button class="delete-btn" onclick="deleteCustomerByName('${customer.name}')">Delete All 🗑️</button>
+                </div>
+            `;
+            customerListDiv.appendChild(div);
+            
+            // Add to datalist for auto-fill in billing
+            const option = document.createElement('option');
+            option.value = customer.name;
+            customerNamesDatalist.appendChild(option);
+        });
+    }
     
-    // Render transaction history
+    // 3. Render transaction history (unfiltered)
     history.sort((a, b) => new Date(b.date) - new Date(a.date))
           .forEach(bill => {
+        // Skip manually added entries with no sales to only show real transactions in history table
+        if (bill.total === 0 && bill.date.includes("(Added Manually)")) {
+             return;
+        }
+
         const billJson = JSON.stringify(bill).replace(/"/g, '&quot;');
         const row = table.insertRow();
         row.innerHTML = `
@@ -2023,7 +2167,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     const now = new Date();
     const hours = now.getHours().toString().padStart(2, '0');
-    const minutes = now.getMinutes().toString().padStart(2, '0');
+    const minutes = now.getMinutes().getMinutes().toString().padStart(2, '0');
     $('apptTime').value = `${hours}:${minutes}`;
     
     console.log("App initialized");
@@ -2065,8 +2209,8 @@ $('offerPhoto').addEventListener('change', function(e) {
     }
 });
 
-// Event listeners for customer info changes AND offer code change
-$('billCustName').addEventListener('input', updateReceiptDisplay);
+// Event listeners for customer info changes AND offer code change - MODIFIED
+$('billCustName').addEventListener('input', autoFillCustomerPhone);
 $('billCustPhone').addEventListener('input', updateReceiptDisplay);
 $('billOfferCode').addEventListener('input', updateReceiptDisplay);
 
@@ -2104,6 +2248,12 @@ window.downloadReceipt = downloadReceipt;
 window.saveSalonInfo = saveSalonInfo;
 window.promptChangePin = promptChangePin;
 window.deleteHistoryItem = deleteHistoryItem;
+
+// New Customer Management Functions
+window.promptAddCustomer = promptAddCustomer;
+window.deleteCustomerByName = deleteCustomerByName;
+window.searchCustomer = searchCustomer;
+window.autoFillCustomerPhone = autoFillCustomerPhone;
 </script>
 </body>
 </html>
