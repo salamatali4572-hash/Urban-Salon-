@@ -401,6 +401,9 @@ th {
 
 <header>
   <h1>Salon Manager Pro (Salamat Ali) 💇‍♂️</h1>
+  <div style="font-size: 10px; color: #666;">
+    Powered by Ali (03091539086) &copy;2025
+  </div>
 </header>
 
 <nav id="mainNav" class="hidden">
@@ -539,6 +542,8 @@ th {
     </h3>
     <div class="branding-footer">
         Salon Contact: <span id="brandingPhone">03091539086</span>
+        <br>
+        Powered by Ali (03091539086) &copy;2025
     </div>
   </div>
   
@@ -736,7 +741,8 @@ function shareOnWhatsApp() {
                      `💫 Get *${currentShareOffer.discount}% OFF* on selected services!\n\n` +
                      `✨ Don't miss this amazing opportunity!\n` +
                      `📍 Visit us today!\n\n` +
-                     `_Contact: ${getSalonPhone()}_`;
+                     `_Contact: ${getSalonPhone()}_\n` +
+                     `_Powered by Ali (03091539086) ©2025_`; // Added branding
     
     const encodedMessage = encodeURIComponent(shareText);
     const waLink = `https://wa.me/?text=${encodedMessage}`;
@@ -747,14 +753,14 @@ function shareOnWhatsApp() {
 function shareOnFacebook() {
     if (!currentShareOffer) return;
     
-    const shareText = `Check out this amazing offer: ${currentShareOffer.title} - ${currentShareOffer.discount}% OFF! At ${getSalonName()}`;
+    const shareText = `Check out this amazing offer: ${currentShareOffer.title} - ${currentShareOffer.discount}% OFF! At ${getSalonName()} | Powered by Ali (03091539086) ©2025`; // Added branding
     const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}&quote=${encodeURIComponent(shareText)}`;
     window.open(facebookUrl, '_blank', 'width=600,height=400');
     closeShareModal();
 }
 
 function shareOnInstagram() {
-    alert('To share on Instagram:\n1. Take a screenshot of this offer\n2. Open Instagram\n3. Create a new post with the screenshot\n4. Add relevant hashtags\n\nOffer: ' + currentShareOffer.title + ' - ' + currentShareOffer.discount + '% OFF');
+    alert('To share on Instagram:\n1. Take a screenshot of this offer\n2. Open Instagram\n3. Create a new post with the screenshot\n4. Add relevant hashtags\n\nOffer: ' + currentShareOffer.title + ' - ' + currentShareOffer.discount + '% OFF\nPowered by Ali (03091539086) ©2025'); // Added branding
     closeShareModal();
 }
 
@@ -766,7 +772,8 @@ function copyOfferText() {
                      `💫 Get ${currentShareOffer.discount}% OFF on selected services!\n\n` +
                      `✨ Don't miss this amazing opportunity!\n` +
                      `📍 Visit us today!\n\n` +
-                     `Contact: ${getSalonPhone()}`;
+                     `Contact: ${getSalonPhone()}\n` +
+                     `Powered by Ali (03091539086) ©2025`; // Added branding
     
     navigator.clipboard.writeText(offerText).then(() => {
         alert('Offer text copied to clipboard!');
@@ -795,6 +802,7 @@ function updateReceiptDisplay() {
     $('#brandingPhone').textContent = getSalonPhone();
 }
 
+// MODIFIED getReceiptMessage function
 function getReceiptMessage(bill, includeContact = true) {
     const finalTotal = bill.total;
     const customerName = bill.customer;
@@ -813,8 +821,12 @@ function getReceiptMessage(bill, includeContact = true) {
     message += `Thank you for your business! 🎉\n`;
     
     if (includeContact) {
-        message += `_Contact: ${getSalonPhone()}_`;
+        message += `_Contact: ${getSalonPhone()}_\n`; // Added newline for cleaner look
     }
+    
+    // Developer Branding
+    message += `_Powered by Ali (03091539086) ©2025_`;
+    
     return message;
 }
 
@@ -959,6 +971,7 @@ function generateMonthlyPDF() {
     doc.setFontSize(10);
     doc.setTextColor(150, 150, 150);
     doc.text(`Contact: ${getSalonPhone()}`, 105, 280, { align: 'center' });
+    doc.text(`Powered by Ali (03091539086) ©2025`, 105, 285, { align: 'center' }); // Added branding
     
     // Save PDF
     doc.save(`salon-report-${monthNames[month]}-${year}.pdf`);
@@ -1060,6 +1073,7 @@ function generateCompletePDF() {
     doc.setFontSize(10);
     doc.setTextColor(150, 150, 150);
     doc.text(`Contact: ${getSalonPhone()}`, 105, 280, { align: 'center' });
+    doc.text(`Powered by Ali (03091539086) ©2025`, 105, 285, { align: 'center' }); // Added branding
     
     // Save PDF
     doc.save(`salon-complete-report-${new Date().getTime()}.pdf`);
