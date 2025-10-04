@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Salon Manager Pro (Salamat Ali)</title>
 <style>
-/* --- CSS (Unchanged for brevity and style continuity) --- */
+/* --- CSS --- */
 :root {
     --primary-blue: #1877f2; 
     --light-bg: #f0f2f5;    
@@ -174,7 +174,7 @@ th {
     background: #c9302c;
 }
 
-/* --- Other Sections CSS (kept short for brevity) --- */
+/* --- Other Sections CSS --- */
 .hidden { display: none !important; }
 .scrollable-feed {
     display: flex;
@@ -208,7 +208,7 @@ th {
     gap: 5px;
 }
 
-/* --- BILL RECEIPT CONTAINER (For html2canvas) --- */
+/* --- BILL RECEIPT CONTAINER --- */
 #billReceipt {
     padding: 15px;
     background: var(--card-bg);
@@ -234,6 +234,33 @@ th {
     border-bottom: 1px dotted #ccc;
     font-size: 13px;
     vertical-align: top;
+}
+
+.form-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+.form-row input, .form-row select {
+    flex: 1;
+}
+.photo-preview {
+    max-width: 100px;
+    max-height: 100px;
+    margin-top: 10px;
+    border-radius: 4px;
+}
+.auth-link-button {
+    background: none;
+    border: none;
+    color: var(--primary-blue);
+    cursor: pointer;
+    text-decoration: underline;
+    margin: 5px;
+}
+.loading {
+    opacity: 0.7;
+    pointer-events: none;
 }
 </style>
 </head>
@@ -386,42 +413,40 @@ th {
 </section>
 
 <script type="module">
-  // All imports needed for Firebase and external libraries
+  // Firebase imports
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
-  import { getFirestore, doc, setDoc, getDoc, updateDoc, arrayUnion, arrayRemove, collection } 
+  import { getFirestore, doc, setDoc, getDoc, updateDoc, arrayUnion, arrayRemove } 
     from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
   import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, sendPasswordResetEmail, onAuthStateChanged } 
-    from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js"; // <-- NEW AUTH IMPORT
+    from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
 
-  import html2canvas from 'https://html2canvas.hertzen.com/dist/html2canvas.min.js';
-  import { jsPDF } from 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-  import 'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js';
-
-
-  // --- Firebase Config (YOUR CONFIG) ---
+  // Your Firebase Config
   const firebaseConfig = {
     apiKey: "AIzaSyBBFGIwiuzXNFrJ7kRe1rNauKqolIVMVI4",
     authDomain: "upsm-107f6.firebaseapp.com",
+    databaseURL: "https://upsm-107f6-default-rtdb.asia-southeast1.firebasedatabase.app",
     projectId: "upsm-107f6",
-    storageBucket: "upsm-107f6.firebasestorage.app", 
+    storageBucket: "upsm-107f6.firebasestorage.app",
     messagingSenderId: "359645965485",
     appId: "1:359645965485:web:a8358f7316cc433b182a24",
     measurementId: "G-QYS5PB1C6Y"
   };
 
+  // Initialize Firebase
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
-  const auth = getAuth(app); // Get Firebase Authentication instance
+  const auth = getAuth(app);
 
-  let currentUserUID = null; // Stores the Firebase Auth UID
+  // Global variables
+  let currentUserUID = null;
   let currentUserData = {};
   let billItems = [];
 
   // DOM Elements
   const $ = (id) => document.getElementById(id);
-  let navEl; 
+  let navEl;
 
-  // --- Utility Function for Local Image Storage (Base64) ---
+  // Utility Functions
   function fileToBase64(file) {
       return new Promise((resolve, reject) => {
           if (!file) { return resolve(null); }
@@ -431,198 +456,240 @@ th {
           reader.onerror = error => reject(error);
       });
   }
-  // -------------------------------------------------------------------
 
-
-  // --- Core Functions ---
-  async function loadDashboardData() {
-    if (!currentUserUID) return;
-    try {
-        // Document path now uses the user's UID for security
-        const snap = await getDoc(doc(db, "users", currentUserUID)); 
-        
-        if (!snap.exists()) {
-             // If Auth user exists but Firestore data doesn't, create it (shouldn't happen after successful register)
-             console.log("Firestore document missing, forcing logout to re-register.");
-             await signOut(auth);
-             return;
-        }
-        
-        currentUserData = snap.data();
-        
-        renderAppointments(currentUserData.appointments || []);
-        renderProducts(currentUserData.products || []);
-        renderOffers(currentUserData.offers || []);
-        renderHistory(currentUserData.history || []);
-        renderMonthlySales(currentUserData.monthlySales || []); 
-        
-        $('totalSales').innerText = (currentUserData.totalSales || 0).toFixed(2);
-        
-        // After successful load, show the dashboard
-        navEl.classList.remove('hidden'); 
-        window.showTab('appointments', document.querySelector("nav button:nth-child(1)"));
-        $('auth').classList.remove('active'); // Hide Auth section
-    } catch(e) {
-        console.error("Error loading dashboard data:", e);
-        alert("Failed to load data. Check your Firestore Security Rules.");
-    }
-  }
-
-  // --- Auth State Listener (BEST PRACTICE) ---
-  // This listener manages the UI when the login status changes.
-  onAuthStateChanged(auth, (user) => {
-    navEl = $('mainNav');
-
-    if (user) {
-        // User is signed in.
-        currentUserUID = user.uid;
-        // console.log("User signed in with UID:", currentUserUID);
-        localStorage.setItem("currentUserUID", user.uid);
-        loadDashboardData();
-    } else {
-        // User is signed out.
-        currentUserUID = null;
-        currentUserData = {};
-        localStorage.removeItem("currentUserUID");
-        
-        // Show Auth screen
-        navEl.classList.add('hidden'); 
-        document.querySelectorAll("section").forEach(sec => sec.classList.remove("active"));
-        $('auth').classList.add('active');
-        window.showLogin(); 
-    }
-  });
-
-
-  // --- Navigation (Made Global) ---
+  // Navigation Functions
   window.showTab = function(id, btn) {
-    document.querySelectorAll("section").forEach(sec => sec.classList.remove("active"));
-    document.querySelectorAll("#mainNav button").forEach(b => b.classList.remove("active"));
-    
-    if (btn) btn.classList.add("active");
-    
-    $(id).classList.add("active");
+      document.querySelectorAll("section").forEach(sec => sec.classList.remove("active"));
+      document.querySelectorAll("#mainNav button").forEach(b => b.classList.remove("active"));
+      
+      if (btn) btn.classList.add("active");
+      
+      $(id).classList.add("active");
 
-    if (currentUserUID && ['appointments', 'products', 'offers', 'sales', 'history'].includes(id)) {
-        loadDashboardData();
-    }
-    if (id === 'billing') {
-        renderProducts(currentUserData.products || []);
-    }
+      if (currentUserUID && ['appointments', 'products', 'offers', 'sales', 'history'].includes(id)) {
+          loadDashboardData();
+      }
+      if (id === 'billing') {
+          renderProducts(currentUserData.products || []);
+      }
   }
 
-  // --- Auth & Session (Made Global) ---
+  // Auth Functions
   window.showLogin = function() {
-    $('loginForm').classList.remove('hidden');
-    $('registerForm').classList.add('hidden');
-    $('forgotForm').classList.add('hidden');
+      $('loginForm').classList.remove('hidden');
+      $('registerForm').classList.add('hidden');
+      $('forgotForm').classList.add('hidden');
   }
 
   window.showRegister = function() {
-    $('loginForm').classList.add('hidden');
-    $('registerForm').classList.remove('hidden');
-    $('forgotForm').classList.add('hidden');
+      $('loginForm').classList.add('hidden');
+      $('registerForm').classList.remove('hidden');
+      $('forgotForm').classList.add('hidden');
   }
 
   window.showForgot = function() {
-    $('loginForm').classList.add('hidden');
-    $('registerForm').classList.add('hidden');
-    $('forgotForm').classList.remove('hidden');
+      $('loginForm').classList.add('hidden');
+      $('registerForm').classList.add('hidden');
+      $('forgotForm').classList.remove('hidden');
   }
 
   window.registerUser = async function() {
-    let email = $('regEmail').value.trim(), p = $('regPass').value, pin = $('regPin').value.trim();
-    if (!email || !p || !pin) return alert("Please fill all fields (Email, Password, Owner Pin).");
-    if (p.length < 6) return alert("Password must be at least 6 characters long.");
-    
-    try {
-        // 1. Create user with Firebase Auth (Email/Password)
-        const userCredential = await createUserWithEmailAndPassword(auth, email, p);
-        const user = userCredential.user;
-        
-        // 2. Create corresponding Firestore document using the Auth UID
-        await setDoc(doc(db, "users", user.uid), { 
-            email: email, 
-            pin: pin, 
-            appointments:[], products:[], bills:[], offers:[], totalSales:0, history:[], monthlySales:[]
-        });
-        
-        alert("Account created and logged in successfully!");
-        // The onAuthStateChanged listener will handle dashboard loading here.
-        
-        // Clear forms
-        $('regEmail').value = $('regPass').value = $('regPin').value = '';
-    } catch(error) {
-        console.error("Registration Error:", error);
-        let msg = "Registration failed. Please check your console.";
-        if (error.code === 'auth/email-already-in-use') {
-            msg = "This email address is already in use.";
-        } else if (error.code === 'auth/invalid-email') {
-            msg = "The email address is not valid.";
-        }
-        alert(msg);
-    }
+      let email = $('regEmail').value.trim(), p = $('regPass').value, pin = $('regPin').value.trim();
+      if (!email || !p || !pin) return alert("Please fill all fields.");
+      if (p.length < 6) return alert("Password must be at least 6 characters long.");
+      
+      try {
+          // Show loading
+          $('registerForm').classList.add('loading');
+          
+          // Create user with Firebase Auth
+          const userCredential = await createUserWithEmailAndPassword(auth, email, p);
+          const user = userCredential.user;
+          
+          // Create user document in Firestore
+          await setDoc(doc(db, "users", user.uid), { 
+              email: email, 
+              pin: pin, 
+              appointments: [], 
+              products: [], 
+              bills: [], 
+              offers: [], 
+              totalSales: 0, 
+              history: [], 
+              monthlySales: [] 
+          });
+          
+          alert("Account created successfully!");
+          
+          // Clear forms
+          $('regEmail').value = $('regPass').value = $('regPin').value = '';
+          
+      } catch(error) {
+          console.error("Registration Error:", error);
+          let msg = "Registration failed. ";
+          if (error.code === 'auth/email-already-in-use') {
+              msg = "This email address is already in use.";
+          } else if (error.code === 'auth/invalid-email') {
+              msg = "The email address is not valid.";
+          } else if (error.code === 'auth/weak-password') {
+              msg = "Password is too weak.";
+          }
+          alert(msg);
+      } finally {
+          $('registerForm').classList.remove('loading');
+      }
   }
 
   window.loginUser = async function() {
-    let email = $('logEmail').value.trim(), p = $('logPass').value;
-    
-    try {
-        // Sign in user with Firebase Auth
-        await signInWithEmailAndPassword(auth, email, p);
-        
-        // Auth listener will handle the rest (setting UID and loading data)
-        alert("Login successful! Loading Dashboard..."); 
-        
-        $('logEmail').value = $('logPass').value = '';
-    } catch(error) {
-        console.error("Login Error:", error);
-        alert("Login failed. Invalid email or password. Error Code: " + error.code);
-    }
+      let email = $('logEmail').value.trim(), p = $('logPass').value;
+      if (!email || !p) return alert("Please enter email and password.");
+      
+      try {
+          // Show loading
+          $('loginForm').classList.add('loading');
+          
+          // Sign in with Firebase Auth
+          await signInWithEmailAndPassword(auth, email, p);
+          alert("Login successful! Loading dashboard...");
+          
+      } catch(error) {
+          console.error("Login Error:", error);
+          let msg = "Login failed. ";
+          if (error.code === 'auth/invalid-email') {
+              msg = "Invalid email address.";
+          } else if (error.code === 'auth/user-not-found') {
+              msg = "No account found with this email.";
+          } else if (error.code === 'auth/wrong-password') {
+              msg = "Incorrect password.";
+          } else if (error.code === 'auth/too-many-requests') {
+              msg = "Too many failed attempts. Please try again later.";
+          }
+          alert(msg);
+      } finally {
+          $('loginForm').classList.remove('loading');
+      }
   }
 
   window.logoutUser = async function() {
       try {
           await signOut(auth);
           alert("Logged out successfully.");
-          // Auth listener handles UI reset
       } catch (error) {
           console.error("Logout Error:", error);
+          alert("Logout failed.");
       }
   }
 
   window.forgotPassword = async function(){
-    let email = $('fpEmail').value.trim();
-    if (!email) return alert("Please enter your email address.");
+      let email = $('fpEmail').value.trim();
+      if (!email) return alert("Please enter your email address.");
 
-    try {
-        await sendPasswordResetEmail(auth, email);
-        alert("Password reset email sent! Check your inbox.");
-        $('fpEmail').value = '';
-        window.showLogin();
-    } catch(error) {
-        console.error("Forgot Password Error:", error);
-        alert("Failed to send reset email. Make sure the email is registered.");
-    }
+      try {
+          await sendPasswordResetEmail(auth, email);
+          alert("Password reset email sent! Check your inbox.");
+          $('fpEmail').value = '';
+          window.showLogin();
+      } catch(error) {
+          console.error("Forgot Password Error:", error);
+          let msg = "Failed to send reset email. ";
+          if (error.code === 'auth/user-not-found') {
+              msg = "No account found with this email.";
+          } else if (error.code === 'auth/invalid-email') {
+              msg = "Invalid email address.";
+          }
+          alert(msg);
+      }
   }
-  
-  // --- Pin Verification ---
+
+  // Auth State Listener
+  onAuthStateChanged(auth, (user) => {
+      navEl = $('mainNav');
+
+      if (user) {
+          // User is signed in
+          currentUserUID = user.uid;
+          console.log("User signed in:", user.email);
+          loadDashboardData();
+      } else {
+          // User is signed out
+          currentUserUID = null;
+          currentUserData = {};
+          
+          // Show auth screen
+          navEl.classList.add('hidden'); 
+          document.querySelectorAll("section").forEach(sec => sec.classList.remove("active"));
+          $('auth').classList.add('active');
+          window.showLogin();
+      }
+  });
+
+  // Data Management
+  async function loadDashboardData() {
+      if (!currentUserUID) return;
+      
+      try {
+          const userDoc = await getDoc(doc(db, "users", currentUserUID));
+          
+          if (userDoc.exists()) {
+              currentUserData = userDoc.data();
+              
+              // Render all data
+              renderAppointments(currentUserData.appointments || []);
+              renderProducts(currentUserData.products || []);
+              renderOffers(currentUserData.offers || []);
+              renderHistory(currentUserData.history || []);
+              renderMonthlySales(currentUserData.monthlySales || []); 
+              
+              $('totalSales').innerText = (currentUserData.totalSales || 0).toFixed(2);
+              
+              // Show dashboard
+              navEl.classList.remove('hidden'); 
+              showTab('appointments', document.querySelector("nav button:nth-child(1)"));
+              $('auth').classList.remove('active');
+          } else {
+              console.log("No user data found in Firestore");
+          }
+      } catch(e) {
+          console.error("Error loading dashboard data:", e);
+          alert("Failed to load data. Please check your connection.");
+      }
+  }
+
   window.verifyOwnerPin = async function() {
-    if (!currentUserUID) return false;
-    const inputPin = prompt("Enter Owner Pin to confirm this action:");
-    if (!inputPin) return false;
-    
-    const snap = await getDoc(doc(db,"users",currentUserUID));
-    if(snap.exists() && snap.data().pin === inputPin) {
-        return true;
-    } else {
-        alert("Invalid Owner Pin!");
-        return false;
-    }
+      if (!currentUserUID) return false;
+      const inputPin = prompt("Enter Owner Pin to confirm this action:");
+      if (!inputPin) return false;
+      
+      const userDoc = await getDoc(doc(db, "users", currentUserUID));
+      if(userDoc.exists() && userDoc.data().pin === inputPin) {
+          return true;
+      } else {
+          alert("Invalid Owner Pin!");
+          return false;
+      }
   }
 
-  // --- Data Management Functions (All updated to use currentUserUID) ---
-  
+  // Appointment Functions
+  window.addAppointment = async function(){
+      if(!currentUserUID) return alert("Please log in first.");
+      let appt = { 
+          customer: $('custName').value.trim(), 
+          service: $('service').value.trim(), 
+          date: $('apptDate').value, 
+          time: $('apptTime').value,
+          status: 'Pending' 
+      };
+      if (!appt.customer || !appt.service || !appt.date || !appt.time) return alert("Please fill all appointment details.");
+      
+      await updateDoc(doc(db, "users", currentUserUID), { 
+          appointments: arrayUnion(appt) 
+      });
+      
+      alert("Appointment added.");
+      $('custName').value = $('service').value = $('apptDate').value = $('apptTime').value = '';
+      loadDashboardData(); 
+  }
+
   window.manageAppointment = async function(date, time, newStatus) {
       if (!currentUserUID) return;
 
@@ -630,246 +697,479 @@ th {
       const index = appointments.findIndex(a => a.date === date && a.time === time);
       
       if (index === -1) {
-          alert("Appointment not found in database.");
+          alert("Appointment not found.");
           loadDashboardData();
           return;
       }
       
-      const apptToUpdate = { ...appointments[index], status: newStatus };
+      // Create updated appointment
+      const updatedAppt = { ...appointments[index], status: newStatus };
       
-      const newAppointments = appointments.filter((_, i) => i !== index);
-      newAppointments.push(apptToUpdate);
-
-      await updateDoc(doc(db, "users", currentUserUID), { appointments: newAppointments }); // <-- UID used
-      // ... rest of the status update logic ...
+      // Remove old and add updated
+      await updateDoc(doc(db, "users", currentUserUID), { 
+          appointments: arrayRemove(appointments[index]) 
+      });
+      await updateDoc(doc(db, "users", currentUserUID), { 
+          appointments: arrayUnion(updatedAppt) 
+      });
       
       alert(`Appointment status updated to: ${newStatus}`);
-      currentUserData.appointments = newAppointments;
-      renderAppointments(newAppointments);
+      loadDashboardData();
   }
-  
+
   window.deleteAppointment = async function(date, time) {
       if (!currentUserUID) return;
       if (!await verifyOwnerPin()) return; 
       
-      const apptToRemove = currentUserData.appointments.find(a => a.date === date && a.time === time);
-      if (apptToRemove) {
-          await updateDoc(doc(db, "users", currentUserUID), { appointments: arrayRemove(apptToRemove) }); // <-- UID used
+      const appointmentToDelete = currentUserData.appointments.find(a => a.date === date && a.time === time);
+      if (appointmentToDelete) {
+          await updateDoc(doc(db, "users", currentUserUID), { 
+              appointments: arrayRemove(appointmentToDelete) 
+          });
           alert("Appointment deleted permanently.");
           loadDashboardData();
       }
   }
 
+  // Product Functions
+  window.addProduct = async function(){
+      if(!currentUserUID) return alert("Please log in first.");
+      let name = $('prodName').value.trim();
+      let price = +$('prodPrice').value;
+      const photoFile = $('prodPhoto').files[0];
+      
+      if (!name || isNaN(price) || price <= 0) return alert("Invalid Name or Price.");
+
+      let photoURL = null;
+      if (photoFile) {
+          try {
+              photoURL = await fileToBase64(photoFile);
+          } catch (e) {
+              alert("Image processing failed: " + e.message);
+              return;
+          }
+      }
+      
+      let prod = { name, price, photoURL }; 
+      
+      await updateDoc(doc(db, "users", currentUserUID), { 
+          products: arrayUnion(prod) 
+      });
+      
+      alert("Product/Service added successfully.");
+      $('prodName').value = $('prodPrice').value = '';
+      $('prodPhoto').value = null; 
+      loadDashboardData(); 
+  }
 
   window.removeProduct = async function(name) {
       if (!currentUserUID) return;
       if (!await verifyOwnerPin()) return; 
       
-      const prodToRemove = currentUserData.products.find(p => p.name === name);
-      if (prodToRemove) {
-          await updateDoc(doc(db, "users", currentUserUID), { products: arrayRemove(prodToRemove) }); // <-- UID used
+      const productToRemove = currentUserData.products.find(p => p.name === name);
+      if (productToRemove) {
+          await updateDoc(doc(db, "users", currentUserUID), { 
+              products: arrayRemove(productToRemove) 
+          });
           alert("Product/Service removed.");
           loadDashboardData();
       }
   }
-  
+
+  // Offer Functions
+  window.addOffer = async function(){
+      if(!currentUserUID) return alert("Please log in first.");
+      let title = $('offerTitle').value.trim();
+      let discount = +$('offerDisc').value;
+      const photoFile = $('offerPhoto').files[0];
+
+      if (!title || isNaN(discount) || discount <= 0 || discount >= 100) return alert("Invalid Title or Discount (must be between 1 and 99).");
+
+      let photoURL = null;
+      if (photoFile) {
+          try {
+              photoURL = await fileToBase64(photoFile);
+          } catch (e) {
+              alert("Image processing failed: " + e.message);
+              return;
+          }
+      }
+
+      let offer = { title, discount, photoURL }; 
+      await updateDoc(doc(db, "users", currentUserUID), { 
+          offers: arrayUnion(offer) 
+      });
+      
+      alert("Offer added successfully.");
+      $('offerTitle').value = $('offerDisc').value = '';
+      $('offerPhoto').value = null; 
+      loadDashboardData();
+  }
+
   window.removeOffer = async function(title) {
       if (!currentUserUID) return;
       if (!await verifyOwnerPin()) return; 
       
       const offerToRemove = currentUserData.offers.find(o => o.title === title);
       if (offerToRemove) {
-          await updateDoc(doc(db, "users", currentUserUID), { offers: arrayRemove(offerToRemove) }); // <-- UID used
+          await updateDoc(doc(db, "users", currentUserUID), { 
+              offers: arrayRemove(offerToRemove) 
+          });
           alert("Offer removed.");
           loadDashboardData();
       }
   }
 
-  // Adding Data
-  window.addAppointment = async function(){
-    if(!currentUserUID) return alert("Please log in first.");
-    let appt = { 
-        customer:$('custName').value.trim(), 
-        service:$('service').value.trim(), 
-        date:$('apptDate').value, 
-        time:$('apptTime').value,
-        status: 'Pending' 
-    };
-    if (!appt.customer || !appt.service || !appt.date || !appt.time) return alert("Please fill all appointment details.");
-    
-    await updateDoc(doc(db,"users",currentUserUID), { appointments: arrayUnion(appt) }); // <-- UID used
-    alert("Appointment added.");
-    $('custName').value = $('service').value = $('apptDate').value = $('apptTime').value = '';
-    loadDashboardData(); 
-  }
-
-  window.addProduct = async function(){
-    if(!currentUserUID) return alert("Please log in first.");
-    let name = $('prodName').value.trim();
-    let price = +$('prodPrice').value;
-    const photoFile = $('prodPhoto').files[0];
-    
-    if (!name || isNaN(price) || price <= 0) return alert("Invalid Name or Price.");
-
-    let photoURL = null;
-    if (photoFile) {
-        try {
-            photoURL = await fileToBase64(photoFile);
-        } catch (e) {
-            alert("Image processing failed: " + e.message);
-            return;
-        }
-    }
-    
-    let prod = { name, price, photoURL }; 
-    
-    await updateDoc(doc(db,"users",currentUserUID), { products: arrayUnion(prod) }); // <-- UID used
-    alert("Product/Service added successfully.");
-    $('prodName').value = $('prodPrice').value = '';
-    $('prodPhoto').value = null; 
-    loadDashboardData(); 
-  }
-  
-  window.addOffer = async function(){
-    if(!currentUserUID) return alert("Please log in first.");
-    let title = $('offerTitle').value.trim();
-    let discount = +$('offerDisc').value;
-    const photoFile = $('offerPhoto').files[0];
-
-    if (!title || isNaN(discount) || discount <= 0 || discount >= 100) return alert("Invalid Title or Discount (must be between 1 and 99).");
-
-    let photoURL = null;
-    if (photoFile) {
-        try {
-            photoURL = await fileToBase64(photoFile);
-        } catch (e) {
-            alert("Image processing failed: " + e.message);
-            return;
-        }
-    }
-
-    let offer = { title, discount, photoURL }; 
-    await updateDoc(doc(db,"users",currentUserUID), { offers: arrayUnion(offer) }); // <-- UID used
-    alert("Offer added successfully.");
-    $('offerTitle').value = $('offerDisc').value = '';
-    $('offerPhoto').value = null; 
-    loadDashboardData();
+  // Billing Functions
+  window.addBillItem = function() {
+      const productSelect = $('billProd');
+      const selectedProduct = productSelect.options[productSelect.selectedIndex];
+      const productName = selectedProduct.text;
+      const productPrice = parseFloat(selectedProduct.value);
+      const quantity = parseInt($('billQty').value) || 1;
+      
+      if (!productName || isNaN(productPrice)) return alert("Please select a product first.");
+      
+      const total = productPrice * quantity;
+      billItems.push({ name: productName, price: productPrice, quantity: quantity, total: total });
+      
+      // Update bill table
+      const billTable = $('billTable');
+      const newRow = billTable.insertRow();
+      newRow.innerHTML = `
+          <td>${productName}</td>
+          <td>${quantity}</td>
+          <td>${productPrice.toFixed(2)}</td>
+          <td>${total.toFixed(2)}</td>
+      `;
+      
+      // Update total
+      const currentTotal = billItems.reduce((sum, item) => sum + item.total, 0);
+      $('billTotal').innerText = currentTotal.toFixed(2);
+      
+      $('billQty').value = 1;
   }
 
   window.saveBill = async function(){
-    if(!currentUserUID) return alert("Please log in first.");
-    if(billItems.length === 0) return alert("The bill is empty.");
-    
-    const finalTotal = billItems.reduce((s,i)=>s+i.total, 0);
-    const customerName = $('billCustName').value.trim() || "Walk-in Customer";
-    const customerPhone = $('billCustPhone').value.trim(); 
-    const cleanPhone = customerPhone ? customerPhone.replace(/[^0-9]/g, "") : null;
-    
-    let bill = { 
-        customer: customerName,
-        phone: cleanPhone, 
-        items: billItems, 
-        total: finalTotal, 
-        date: new Date().toLocaleString() 
-    };
+      if(!currentUserUID) return alert("Please log in first.");
+      if(billItems.length === 0) return alert("The bill is empty.");
+      
+      const finalTotal = billItems.reduce((s,i) => s + i.total, 0);
+      const customerName = $('billCustName').value.trim() || "Walk-in Customer";
+      const customerPhone = $('billCustPhone').value.trim(); 
+      const cleanPhone = customerPhone ? customerPhone.replace(/[^0-9]/g, "") : null;
+      
+      let bill = { 
+          customer: customerName,
+          phone: cleanPhone, 
+          items: billItems, 
+          total: finalTotal, 
+          date: new Date().toLocaleString() 
+      };
 
-    const newTotalSales = (currentUserData.totalSales || 0) + finalTotal;
+      const newTotalSales = (currentUserData.totalSales || 0) + finalTotal;
 
-    // 1. Generate Image Receipt (Unchanged)
-    try {
-        const receiptEl = $('billReceipt');
-        $('billReceiptHeader').innerText = `SALON BILL RECEIPT - ${new Date().toLocaleDateString()}`;
-        const canvas = await html2canvas(receiptEl, { scale: 2, logging: false, removeContainer: true });
-        const imgData = canvas.toDataURL('image/png');
-        const newWindow = window.open();
-        newWindow.document.write('<html><head><title>Bill Receipt</title></head><body style="margin:0; text-align:center;"><h1>Bill Image (Right Click to Save)</h1><img src="' + imgData + '" style="max-width:400px; border:1px solid black;"/></body></html>');
-        alert(`Bill of Rs. ${finalTotal.toFixed(2)} saved and Image Receipt generated!`);
-    } catch(error) {
-        console.error("Error generating receipt image:", error);
-        alert("Bill saved, but failed to generate image receipt.");
-    }
-    
-    // 2. Save Data to Firebase
-    await updateDoc(doc(db,"users",currentUserUID), { // <-- UID used
-        bills: arrayUnion(bill), 
-        history: arrayUnion(bill), 
-        totalSales: newTotalSales 
-    });
+      // Generate receipt (simple version)
+      try {
+          let receiptText = `SALON BILL RECEIPT\n`;
+          receiptText += `Date: ${new Date().toLocaleString()}\n`;
+          receiptText += `Customer: ${customerName}\n`;
+          receiptText += `Phone: ${customerPhone}\n\n`;
+          receiptText += `ITEMS:\n`;
+          billItems.forEach(item => {
+              receiptText += `${item.name} x ${item.quantity} = Rs. ${item.total.toFixed(2)}\n`;
+          });
+          receiptText += `\nTOTAL: Rs. ${finalTotal.toFixed(2)}`;
+          
+          alert(`Bill of Rs. ${finalTotal.toFixed(2)} saved!\n\n${receiptText}`);
+      } catch(error) {
+          console.error("Error generating receipt:", error);
+          alert("Bill saved successfully!");
+      }
+      
+      // Save to Firebase
+      await updateDoc(doc(db, "users", currentUserUID), { 
+          bills: arrayUnion(bill),
+          history: arrayUnion(bill),
+          totalSales: newTotalSales 
+      });
 
-    // 3. Optional WhatsApp Text Receipt (Unchanged)
-    if (cleanPhone && cleanPhone.length >= 10) {
-        let msgText = `*Salon Receipt - ${auth.currentUser.email}*\n\n`; // Use email for name
-        // ... rest of the WhatsApp logic ...
-        const encodedMessage = encodeURIComponent(msgText);
-        const waLink = `https://wa.me/${cleanPhone}?text=${encodedMessage}`;
-        window.open(waLink, '_blank');
-    }
+      // WhatsApp sharing
+      if (cleanPhone && cleanPhone.length >= 10) {
+          let msgText = `*Salon Receipt - ${currentUserData.email}*\n\n`;
+          msgText += `Customer: ${customerName}\n`;
+          msgText += `Date: ${new Date().toLocaleString()}\n\n`;
+          msgText += `*Items:*\n`;
+          billItems.forEach(item => {
+              msgText += `• ${item.name} x ${item.quantity} = Rs. ${item.total.toFixed(2)}\n`;
+          });
+          msgText += `\n*Total Amount: Rs. ${finalTotal.toFixed(2)}*\n\n`;
+          msgText += `Thank you for your business! 💈`;
+          
+          const encodedMessage = encodeURIComponent(msgText);
+          const waLink = `https://wa.me/${cleanPhone}?text=${encodedMessage}`;
+          window.open(waLink, '_blank');
+      }
 
-    // 4. Reset Bill State (Unchanged)
-    billItems = []; 
-    $('billTable').innerHTML="<tr><th>Product</th><th>Qty</th><th>Price</th><th>Total</th></tr>";
-    $('billTotal').innerText="0.00";
-    $('billCustName').value = $('billCustPhone').value = '';
-    $('billReceiptHeader').innerText = `SALON BILL RECEIPT`; 
-    
-    loadDashboardData();
+      // Reset bill state
+      billItems = []; 
+      $('billTable').innerHTML = "<tr><th>Product</th><th>Qty</th><th>Price</th><th>Total</th></tr>";
+      $('billTotal').innerText = "0.00";
+      $('billCustName').value = $('billCustPhone').value = '';
+      $('billReceiptHeader').innerText = `SALON BILL RECEIPT`; 
+      
+      loadDashboardData();
   }
-  
-  // Sales & Reporting Functions
+
+  // Sales Functions
   window.closeDay = async function() {
-    if (!currentUserUID) return alert("Please log in first.");
-    if (!await verifyOwnerPin()) return; 
+      if (!currentUserUID) return alert("Please log in first.");
+      if (!await verifyOwnerPin()) return; 
 
-    const currentSales = currentUserData.totalSales || 0;
-    if (currentSales === 0) return alert("No sales to close for today/this period.");
+      const currentSales = currentUserData.totalSales || 0;
+      if (currentSales === 0) return alert("No sales to close for today/this period.");
 
-    const confirmation = confirm(`Are you sure you want to close the day/period? Sales amount Rs. ${currentSales.toFixed(2)} will be archived and the current total will be reset to 0.`);
-    if (!confirmation) return;
-    
-    const salesRecord = {
-        date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
-        amount: currentSales
-    };
+      const confirmation = confirm(`Are you sure you want to close the day/period? Sales amount Rs. ${currentSales.toFixed(2)} will be archived and the current total will be reset to 0.`);
+      if (!confirmation) return;
+      
+      const salesRecord = {
+          date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+          amount: currentSales
+      };
 
-    await updateDoc(doc(db,"users",currentUserUID), { // <-- UID used
-        monthlySales: arrayUnion(salesRecord),
-        totalSales: 0 
-    });
-    
-    alert(`Day closed successfully! Sales of Rs. ${currentSales.toFixed(2)} archived.`);
-    loadDashboardData();
+      await updateDoc(doc(db, "users", currentUserUID), { 
+          monthlySales: arrayUnion(salesRecord),
+          totalSales: 0 
+      });
+      
+      alert(`Day closed successfully! Sales of Rs. ${currentSales.toFixed(2)} archived.`);
+      loadDashboardData();
   }
 
   window.generatePDFStatement = function() {
       if (!currentUserUID) return alert("Please log in first.");
-      // ... PDF generation logic (uses currentUserUID implicitly) ...
-      const shopName = `SALON MANAGER PRO - ${auth.currentUser.email}`;
-      // ... rest of PDF logic (Unchanged) ...
+      
+      const monthlySales = currentUserData.monthlySales || [];
+      if (monthlySales.length === 0) return alert("No sales data available for PDF generation.");
+      
+      let statementText = `SALON MANAGER PRO - SALES STATEMENT\n`;
+      statementText += `Generated on: ${new Date().toLocaleString()}\n`;
+      statementText += `User: ${currentUserData.email}\n\n`;
+      statementText += `MONTHLY SALES HISTORY:\n\n`;
+      
+      let totalAllSales = 0;
+      monthlySales.forEach(sale => {
+          statementText += `${sale.date}: Rs. ${sale.amount.toFixed(2)}\n`;
+          totalAllSales += sale.amount;
+      });
+      
+      statementText += `\nTOTAL ARCHIVED SALES: Rs. ${totalAllSales.toFixed(2)}\n`;
+      statementText += `CURRENT SALES: Rs. ${(currentUserData.totalSales || 0).toFixed(2)}\n`;
+      statementText += `GRAND TOTAL: Rs. ${(totalAllSales + (currentUserData.totalSales || 0)).toFixed(2)}`;
+      
+      alert(`Sales Statement:\n\n${statementText}\n\nYou can copy this text and save it manually.`);
   }
-  
-  // Offer Sharing Function
+
+  // Offer Sharing
   window.shareOfferPopup = function(title, discount, photoURL) {
-      const shopName = auth.currentUser ? auth.currentUser.email : "Your Salon"; // Use email as salon name
+      const shopName = currentUserData.email || "Your Salon";
       const shareText = `*New Offer at ${shopName}!* 🔥\n\n🎉 ${title}\nDiscount: *${discount}% OFF* on selected services!\n\nVisit us today!`;
-      // ... rest of sharing logic (Unchanged) ...
+      
+      const encodedMessage = encodeURIComponent(shareText);
+      const waLink = `https://wa.me/?text=${encodedMessage}`;
+      window.open(waLink, '_blank');
   };
 
-  // --- Other helper functions (render functions, addBillItem) are omitted for brevity but remain the same ---
-  
-  // Omitted rendering functions here for brevity, assume they are present and correct.
-  // Omitted addBillItem for brevity, assume it is present and correct.
-</script>
-<script>
-// Small dummy functions to prevent 'not found' errors for rendering functions if not pasted above
-// (You must paste the full code block above for the app to work)
-function renderProducts(){}
-function renderOffers(){}
-function renderAppointments(){}
-function renderHistory(){}
-function renderMonthlySales(){}
-function addBillItem(){
-    alert("Please replace this dummy function with the real one from the full code block.");
-}
+  // Rendering Functions
+  function renderAppointments(appointments) {
+      const table = $('apptTable');
+      table.innerHTML = `<tr><th>Customer</th><th>Service</th><th>Date</th><th>Time</th><th>Status</th><th>Delete</th></tr>`;
+      
+      appointments.sort((a, b) => new Date(a.date + ' ' + a.time) - new Date(b.date + ' ' + b.time))
+                  .forEach(appt => {
+          const row = table.insertRow();
+          row.innerHTML = `
+              <td>${appt.customer}</td>
+              <td>${appt.service}</td>
+              <td>${appt.date}</td>
+              <td>${appt.time}</td>
+              <td>
+                  <select class="status-select" onchange="manageAppointment('${appt.date}', '${appt.time}', this.value)">
+                      <option value="Pending" ${appt.status === 'Pending' ? 'selected' : ''}>Pending</option>
+                      <option value="Confirmed" ${appt.status === 'Confirmed' ? 'selected' : ''}>Confirmed</option>
+                      <option value="Completed" ${appt.status === 'Completed' ? 'selected' : ''}>Completed</option>
+                      <option value="Cancelled" ${appt.status === 'Cancelled' ? 'selected' : ''}>Cancelled</option>
+                  </select>
+              </td>
+              <td>
+                  <button class="delete-btn" onclick="deleteAppointment('${appt.date}', '${appt.time}')">❌</button>
+              </td>
+          `;
+      });
+  }
+
+  function renderProducts(products) {
+      const feed = $('prodFeed');
+      const billSelect = $('billProd');
+      
+      feed.innerHTML = '';
+      billSelect.innerHTML = '<option value="">Select Product</option>';
+      
+      products.forEach(prod => {
+          // Add to feed
+          const card = document.createElement('div');
+          card.className = 'feed-card';
+          card.innerHTML = `
+              ${prod.photoURL ? `<img src="${prod.photoURL}" class="feed-image" alt="${prod.name}">` : '<div class="feed-image" style="background:#f0f2f5; display:flex; align-items:center; justify-content:center;">📦</div>'}
+              <div style="flex:1;">
+                  <h4 style="margin:0 0 5px 0;">${prod.name}</h4>
+                  <p style="margin:0; color:var(--success-green); font-weight:bold;">Rs. ${prod.price.toFixed(2)}</p>
+              </div>
+              <div class="feed-actions">
+                  <button class="delete-btn" onclick="removeProduct('${prod.name}')">Delete</button>
+              </div>
+          `;
+          feed.appendChild(card);
+          
+          // Add to billing dropdown
+          const option = document.createElement('option');
+          option.value = prod.price;
+          option.textContent = `${prod.name} - Rs. ${prod.price.toFixed(2)}`;
+          billSelect.appendChild(option);
+      });
+  }
+
+  function renderOffers(offers) {
+      const feed = $('offerFeed');
+      feed.innerHTML = '';
+      
+      offers.forEach(offer => {
+          const card = document.createElement('div');
+          card.className = 'feed-card';
+          card.innerHTML = `
+              ${offer.photoURL ? `<img src="${offer.photoURL}" class="feed-image" alt="${offer.title}">` : '<div class="feed-image" style="background:#f0f2f5; display:flex; align-items:center; justify-content:center;">🎁</div>'}
+              <div style="flex:1;">
+                  <h4 style="margin:0 0 5px 0;">${offer.title}</h4>
+                  <p style="margin:0; color:var(--danger-red); font-weight:bold;">${offer.discount}% OFF</p>
+              </div>
+              <div class="feed-actions">
+                  <button class="share-btn" onclick="shareOfferPopup('${offer.title}', '${offer.discount}', '${offer.photoURL || ''}')">Share</button>
+                  <button class="delete-btn" onclick="removeOffer('${offer.title}')">Delete</button>
+              </div>
+          `;
+          feed.appendChild(card);
+      });
+  }
+
+  function renderHistory(history) {
+      const table = $('histTable');
+      table.innerHTML = `<tr><th>Customer</th><th>Phone</th><th>Total Bill</th><th>Date</th></tr>`;
+      
+      // Get unique customers
+      const customers = {};
+      history.forEach(bill => {
+          if (!customers[bill.customer]) {
+              customers[bill.customer] = {
+                  phone: bill.phone,
+                  totalSpent: 0,
+                  lastVisit: bill.date
+              };
+          }
+          customers[bill.customer].totalSpent += bill.total;
+          if (new Date(bill.date) > new Date(customers[bill.customer].lastVisit)) {
+              customers[bill.customer].lastVisit = bill.date;
+          }
+      });
+      
+      // Render customer list
+      const customerList = $('customerList');
+      customerList.innerHTML = '';
+      Object.keys(customers).forEach(customer => {
+          const div = document.createElement('div');
+          div.className = 'feed-card';
+          div.innerHTML = `
+              <div style="flex:1;">
+                  <h4 style="margin:0 0 5px 0;">${customer}</h4>
+                  <p style="margin:0; font-size:12px;">Phone: ${customers[customer].phone || 'N/A'}</p>
+                  <p style="margin:0; font-size:12px;">Total Spent: Rs. ${customers[customer].totalSpent.toFixed(2)}</p>
+                  <p style="margin:0; font-size:12px;">Last Visit: ${customers[customer].lastVisit}</p>
+              </div>
+          `;
+          customerList.appendChild(div);
+      });
+      
+      // Render transaction history
+      history.sort((a, b) => new Date(b.date) - new Date(a.date))
+            .forEach(bill => {
+          const row = table.insertRow();
+          row.innerHTML = `
+              <td>${bill.customer}</td>
+              <td>${bill.phone || 'N/A'}</td>
+              <td>Rs. ${bill.total.toFixed(2)}</td>
+              <td>${bill.date}</td>
+          `;
+      });
+  }
+
+  function renderMonthlySales(monthlySales) {
+      const table = $('monthlySalesTable');
+      table.innerHTML = `<tr><th>Date</th><th>Sales Amount</th></tr>`;
+      
+      monthlySales.sort((a, b) => new Date(b.date) - new Date(a.date))
+                 .forEach(sale => {
+          const row = table.insertRow();
+          row.innerHTML = `
+              <td>${sale.date}</td>
+              <td>Rs. ${sale.amount.toFixed(2)}</td>
+          `;
+      });
+  }
+
+  // Initialize
+  document.addEventListener('DOMContentLoaded', function() {
+      navEl = $('mainNav');
+      
+      // Set today's date as default for appointment date
+      const today = new Date().toISOString().split('T')[0];
+      $('apptDate').value = today;
+      
+      // Set current time as default for appointment time
+      const now = new Date();
+      const hours = now.getHours().toString().padStart(2, '0');
+      const minutes = now.getMinutes().toString().padStart(2, '0');
+      $('apptTime').value = `${hours}:${minutes}`;
+  });
+
+  // File preview handlers
+  $('prodPhoto').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      const preview = $('prodPhotoPreview');
+      if (file) {
+          const reader = new FileReader();
+          reader.onload = function(e) {
+              preview.src = e.target.result;
+              preview.classList.remove('hidden');
+          }
+          reader.readAsDataURL(file);
+      } else {
+          preview.classList.add('hidden');
+      }
+  });
+
+  $('offerPhoto').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      const preview = $('offerPhotoPreview');
+      if (file) {
+          const reader = new FileReader();
+          reader.onload = function(e) {
+              preview.src = e.target.result;
+              preview.classList.remove('hidden');
+          }
+          reader.readAsDataURL(file);
+      } else {
+          preview.classList.add('hidden');
+      }
+  });
 </script>
 </body>
 </html>
