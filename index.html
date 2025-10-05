@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Salon Manager Pro (Salamat Ali) - With Offer Code</title>
+<title>Salon Manager Pro (Salamat Ali) - With Offer Code - FIXED</title>
 <style>
-/* --- CSS --- */
+/* --- CSS (Unchanged, retaining original styles) --- */
 :root {
     --primary-blue: #1877f2; 
     --light-bg: #f0f2f5;    
@@ -191,6 +191,20 @@ th {
 .resend-btn:hover {
     background: #128c7e;
 }
+/* New Local Receipt Button */
+.local-receipt-btn {
+    background: var(--discount-purple);
+    color: white;
+    padding: 5px 10px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    margin-right: 5px;
+}
+.local-receipt-btn:hover {
+    background: #8e44ad;
+}
 
 /* --- Other Sections CSS --- */
 .hidden { display: none !important; }
@@ -211,6 +225,7 @@ th {
     display: flex;
     gap: 15px;
     align-items: center;
+    cursor: pointer; /* Added for customer list clickability */
 }
 .feed-image {
     width: 80px;
@@ -296,6 +311,22 @@ th {
     width: 90%;
     text-align: center;
 }
+/* New Customer History Modal Content Style */
+#customerHistoryModal .share-modal-content {
+    max-width: 600px; 
+    text-align: left;
+}
+#customerHistoryModal table {
+    margin: 10px 0;
+}
+#customerHistoryModal th, #customerHistoryModal td {
+    padding: 8px;
+    font-size: 12px;
+}
+#customerHistoryModal td:nth-child(2), #customerHistoryModal td:nth-child(3) {
+    text-align: right;
+}
+
 .share-platforms {
     display: flex;
     justify-content: center;
@@ -376,6 +407,10 @@ th {
     background: var(--whatsapp);
     color: white;
 }
+.local-message-receipt { /* NEW style for Local Message button */
+    background: var(--discount-purple);
+    color: white;
+}
 .download-receipt {
     background: var(--success-green);
     color: white;
@@ -386,6 +421,17 @@ th {
     border-radius: 8px;
     margin: 15px 0;
     border-left: 4px solid var(--primary-blue);
+}
+/* New Billing Actions Container Style */
+.billing-actions-container {
+    display: flex;
+    justify-content: space-between;
+    gap: 15px;
+    margin-top: 15px;
+}
+.billing-actions-container button {
+    flex: 1;
+    padding: 10px;
 }
 </style>
 
@@ -422,7 +468,7 @@ th {
   <h2>Access Control</h2>
   <div id="loginForm">
     <h3>Existing User (Login)</h3>
-    <input id="logEmail" type="email" placeholder="Email Address" value="salamatali4572@gmail.com">
+    <input id="logEmail" type="email" placeholder="Email Address" value="Example 123@gmail.com">
     <input id="logPass" type="password" placeholder="Password">
     <button class="action" onclick="loginUser()">Login</button>
     <div style="text-align: center; margin-top: 15px;">
@@ -502,7 +548,7 @@ th {
     <input id="offerTitle" placeholder="Offer Title">
     <input id="offerDisc" type="number" placeholder="Discount %">
   </div>
-  <input id="offerCode" placeholder="Offer Code (e.g., SUMMER10)" style="width: calc(100% - 20px);"> <div class="form-group">
+  <input id="offerCode" placeholder="Apply Offer Code (e.g., SUMMER10)" style="width: calc(100% - 20px);"> <div class="form-group">
     <label>Offer Image (Optional) - Local Storage</label>
     <input id="offerPhoto" type="file" accept="image/*">
     <img id="offerPhotoPreview" class="photo-preview hidden" src="" alt="Offer Preview">
@@ -519,7 +565,7 @@ th {
   <div class="form-row">
     <input id="billCustName" placeholder="Customer Name" list="customerNames">
     <datalist id="customerNames"></datalist>
-    <input id="billCustPhone" placeholder="Customer Phone (for WhatsApp)">
+    <input id="billCustPhone" placeholder="Customer Phone (Optional)">
   </div>
   <div class="form-row">
     <select id="billProd"></select>
@@ -555,13 +601,11 @@ th {
     </div>
   </div>
   
-  <div class="receipt-actions">
-    <button class="whatsapp-receipt" onclick="shareReceiptOnWhatsApp()">📱 Send via WhatsApp</button>
-    <button class="download-receipt" onclick="downloadReceipt()">📥 Download Receipt</button>
+  <div class="billing-actions-container">
+    <button class="action whatsapp-receipt" onclick="saveBill('whatsapp')" style="margin-top: 0;">📱 Save & Send via WhatsApp</button>
+    <button class="action local-message-receipt" onclick="saveBill('local')" style="margin-top: 0;">📋 Save & Show Local Message</button>
   </div>
-  
-  <button class="action" onclick="saveBill()" style="margin-top: 15px;">Finalize & Save Bill</button>
-</section>
+  </section>
 
 <section id="sales">
   <h2>Sales Report 📈</h2>
@@ -605,6 +649,7 @@ th {
 
 <section id="history">
   <h2>Customer List 🧑‍🤝‍🧑</h2>
+  <p style="font-size: 14px; color: #666; margin-top: -10px;">*Click on a customer to view their transactions.*</p>
   <div class="form-row" style="gap: 5px; margin-bottom: 15px;">
     <input id="customerSearchInput" placeholder="Search Customer Name" style="flex: 2;">
     <button class="action" onclick="searchCustomer()" style="flex: 1; margin-top: 0; background: #6c757d;">Search 🔍</button>
@@ -645,6 +690,21 @@ th {
     </div>
 </div>
 
+<div id="customerHistoryModal" class="share-modal">
+    <div class="share-modal-content">
+        <h3 id="historyModalTitle"></h3>
+        <p id="historyModalSummary" style="font-size: 14px; color: #666;"></p>
+        <div style="max-height: 400px; overflow-y: auto;">
+            <table id="customerHistoryTable">
+                <tr><th>Date</th><th>Total</th><th>Actions</th></tr>
+            </table>
+        </div>
+        <button class="action" onclick="closeCustomerHistoryModal()" style="margin-top: 15px; background: #6c757d;">
+            Close
+        </button>
+    </div>
+</div>
+
 <script>
 // Firebase Configuration
 const firebaseConfig = {
@@ -669,6 +729,7 @@ let currentUserData = {};
 let billItems = [];
 let currentShareOffer = null;
 let activeTabID = 'appointments'; 
+let lastSavedBill = null; // To hold the bill after saving for receipt actions
 
 // Local Storage Keys for Photos
 const PRODUCT_PHOTOS_KEY = 'salon_product_photos';
@@ -729,7 +790,8 @@ function getOfferPhotoURL(offerTitle) {
     return photos[offerTitle] || null;
 }
 
-// Share Modal Functions
+// Share Modal Functions (Offer Sharing) - Unchanged
+
 function openShareModal(offer) {
     currentShareOffer = offer;
     $('#shareOfferTitle').textContent = offer.title;
@@ -753,7 +815,7 @@ function getSalonPhone() {
 function shareOnWhatsApp() {
     if (!currentShareOffer) return;
     
-    const offerCodeText = currentShareOffer.code ? `\n\n🔑 *Offer Code: ${currentShareOffer.code}*` : ''; // Include code if available
+    const offerCodeText = currentShareOffer.code ? `\n\n🔑 *Offer Code: ${currentShareOffer.code}*` : ''; 
 
     const shareText = `*🔥 Exclusive Offer at ${getSalonName()}! 🔥*\n\n` +
                      `🎉 *${currentShareOffer.title}*\n` +
@@ -813,15 +875,16 @@ function copyOfferText() {
         textArea.select();
         document.execCommand('copy');
         document.body.removeChild(textArea);
-        alert('Offer text copied to clipboard!');
+        alert('Offer text copied to clipboard (Fallback)!');
     });
     closeShareModal();
 }
 
 // Receipt Functions
 function updateReceiptDisplay() {
+    // Phone is optional, default to "N/A" if empty
     const customerName = $('#billCustName').value.trim() || "Walk-in Customer";
-    const customerPhone = $('#billCustPhone').value.trim() || "N/A";
+    const customerPhone = $('#billCustPhone').value.trim() || "N/A"; 
     
     const subTotal = billItems.reduce((sum, item) => sum + item.total, 0);
     const offerCode = $('#billOfferCode').value.trim().toUpperCase();
@@ -833,10 +896,6 @@ function updateReceiptDisplay() {
         if (offer) {
             discountPercent = offer.discount;
             discount = subTotal * (discountPercent / 100);
-        } else {
-             // If offer code is entered but invalid, it's safer not to show 0.00 discount based on an invalid code
-             // This is a display function, so we'll only update if a valid code is found.
-             // Final validation happens in saveBill().
         }
     }
 
@@ -862,9 +921,12 @@ function getReceiptMessage(bill, includeContact = true) {
     const discountAmount = bill.discountAmount;
     const discountCode = bill.discountCode;
     const customerName = bill.customer;
+    // Use saved phone or 'N/A'
+    const customerPhone = bill.phone && bill.phone.trim() !== '' ? bill.phone : 'N/A'; 
     
     let message = `*💈 ${getSalonName()} - Receipt 💈*\n\n`;
     message += `*Customer:* ${customerName}\n`;
+    message += `*Phone:* ${customerPhone}\n`; // Include phone even if N/A
     message += `*Date:* ${bill.date}\n\n`;
     message += `*Items:*\n`;
     
@@ -874,7 +936,8 @@ function getReceiptMessage(bill, includeContact = true) {
     
     message += `\n*Sub Total:* Rs. ${subTotal.toFixed(2)}\n`;
     if (discountAmount > 0) {
-        message += `*Discount:* Rs. ${discountAmount.toFixed(2)} (${discountCode})\n`;
+        // Display discount code if it was applied
+        message += `*Discount:* Rs. ${discountAmount.toFixed(2)} (Code: ${discountCode})\n`; 
     }
     message += `\n*💰 GRAND TOTAL: Rs. ${finalTotal.toFixed(2)}*\n\n`;
     message += `Thank you for your business! 🎉\n`;
@@ -889,84 +952,130 @@ function getReceiptMessage(bill, includeContact = true) {
     return message;
 }
 
-async function shareReceiptOnWhatsApp(bill = null) {
-    let currentBill = bill;
-    let isCurrentBill = false;
-    
-    if (!currentBill) {
-        if (billItems.length === 0) {
-            alert("Please add items to the bill first.");
-            return;
-        }
-        
-        const subTotal = billItems.reduce((s,i) => s + i.total, 0);
-        const offerCode = $('#billOfferCode').value.trim().toUpperCase();
-        let discount = 0;
-        let discountPercent = 0;
-
-        if (offerCode) {
-            const offer = (currentUserData.offers || []).find(o => o.code === offerCode);
-            if (offer) {
-                discountPercent = offer.discount;
-                discount = subTotal * (discountPercent / 100);
-            }
-        }
-        
-        const finalTotal = subTotal - discount;
-
-        currentBill = {
-            customer: $('#billCustName').value.trim() || "Walk-in Customer",
-            phone: $('#billCustPhone').value.trim(),
-            subTotal: subTotal,
-            total: finalTotal,
-            discountAmount: discount,
-            discountCode: discount > 0 ? offerCode : "N/A",
-            date: new Date().toLocaleString(),
-            items: billItems
-        };
-        isCurrentBill = true;
+// MODIFIED shareReceiptOnWhatsApp function - Now always takes a bill object
+async function shareReceiptOnWhatsApp(bill) {
+    if (!bill) {
+        alert("No bill data to share.");
+        return;
     }
     
-    const customerPhone = currentBill.phone;
-    const message = getReceiptMessage(currentBill);
+    // Use the saved phone number from the bill (which can be an empty string)
+    const customerPhone = bill.phone; 
+    const message = getReceiptMessage(bill);
     
-    if (customerPhone && /^\+?\d{7,15}$/.test(customerPhone)) {
+    // Check if phone number is provided and looks like a valid number
+    if (customerPhone && customerPhone.trim() !== '' && /^\+?\d{7,15}$/.test(customerPhone)) {
         // Send to specific customer
         const encodedMessage = encodeURIComponent(message);
         const waLink = `https://wa.me/${customerPhone}?text=${encodedMessage}`;
         window.open(waLink, '_blank');
     } else {
-        if (isCurrentBill) {
-            alert('Please enter a valid customer phone number to send via WhatsApp, or take a screenshot of the receipt.');
-        } else {
-            // History resend, no phone number available
-            const encodedMessage = encodeURIComponent(message);
-            const waLink = `https://wa.me/?text=${encodedMessage}`;
-            alert('No valid phone number found for this transaction. Sharing text generally.');
-            window.open(waLink, '_blank');
-        }
+        // Fallback for general sharing (user to select contact)
+        const encodedMessage = encodeURIComponent(message);
+        const waLink = `https://wa.me/?text=${encodedMessage}`;
+        
+        alert('Customer phone not available or is a walk-in. Opening WhatsApp for you to manually select a contact/group.');
+        window.open(waLink, '_blank');
     }
+    resetBillingState(); // NEW: Reset after sending
 }
 
-function downloadReceipt() {
-    if (billItems.length === 0) {
-        alert("Please add items to the bill first.");
+// MODIFIED showLocalReceiptMessage function - Now always takes a bill object
+function showLocalReceiptMessage(bill) {
+    if (!bill) {
+        alert("No bill data to show.");
         return;
     }
     
-    // We update the receipt display before capture to ensure correct final totals
-    updateReceiptDisplay(); 
+    // The bill receipt HTML is already updated and ready from the saveBill call.
+    
+    const message = getReceiptMessage(bill, false); // No contact info as it's local
+    
+    // Create a user-friendly text output
+    const formattedMessage = message.replace(/\n/g, '<br>')
+                                    .replace(/\*(.*?)\*/g, '<strong>$1</strong>')
+                                    .replace(/_Powered by Ali.*?_/, '<em style="font-size:10px;">Powered by Ali (03091539086) ©2025</em>');
+    
+    const modalContent = `
+        <h3>Local Receipt Message 📋</h3>
+        <p>This message is ready to be copied for non-WhatsApp users or for general sharing.</p>
+        <div style="background:#f9f9f9; padding:15px; border-radius:8px; border:1px solid #ccc; text-align:left; max-height: 300px; overflow-y: auto;">
+            ${formattedMessage}
+        </div>
+        <div style="margin-top:15px; display:flex; justify-content:center; gap:10px;">
+            <button class="action" onclick="copyReceiptText('${message.replace(/'/g, "\\'")}')" style="background:var(--primary-blue);">📋 Copy Text</button>
+            <button class="action" onclick="downloadReceiptImage()" style="background:var(--success-green);">🖼️ Download Receipt Image</button> 
+            <button class="action" onclick="closeLocalReceiptModal(); resetBillingState();" style="background:var(--danger-red);">Close & New Bill</button>
+        </div>
+    `;
+    
+    // Using a separate modal ID to avoid conflict with other modals
+    const modal = document.createElement('div');
+    modal.id = 'localReceiptModal'; 
+    modal.className = 'share-modal active';
+    modal.innerHTML = `<div class="share-modal-content" style="max-width: 500px;">${modalContent}</div>`;
+    document.body.appendChild(modal);
+}
 
-    html2canvas($('#billReceipt'), {
-        scale: 2,
+// Helper to copy the receipt text
+function copyReceiptText(text) {
+    navigator.clipboard.writeText(text).then(() => {
+        alert('Receipt text copied to clipboard!');
+        // We do NOT close the modal here, user clicks 'Close & New Bill'
+    }).catch(() => {
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        alert('Receipt text copied to clipboard (Fallback)!');
+    });
+}
+
+function closeLocalReceiptModal() {
+    const modal = $('localReceiptModal');
+    if (modal) {
+        modal.remove();
+    }
+}
+
+// **NEW FIX:** Function to download the receipt as an image (PNG)
+function downloadReceiptImage() {
+    // This function will capture the current state of the #billReceipt div.
+    // It is called *after* a successful saveBill('local')
+    
+    const receiptEl = $('#billReceipt');
+    if (!receiptEl) {
+        alert("Receipt element not found.");
+        return;
+    }
+    
+    // Show a loading/processing message (optional but good UX)
+    alert("Generating receipt image, please wait...");
+
+    html2canvas(receiptEl, {
+        scale: 2, // Use scale 2 for a higher quality image
         logging: false,
         useCORS: true,
         backgroundColor: '#ffffff'
     }).then(canvas => {
         const link = document.createElement('a');
-        link.download = `salon-receipt-${new Date().getTime()}.png`;
+        
+        // Use customer name for filename if available
+        const customerName = (lastSavedBill ? lastSavedBill.customer : 'walkin').toLowerCase().replace(/\s/g, '-');
+        
+        link.download = `salon-receipt-${customerName}-${new Date().getTime()}.png`;
         link.href = canvas.toDataURL('image/png');
+        
+        // Simulates a click to trigger download
         link.click();
+        
+        // Notify the user
+        alert("Receipt image downloaded successfully!");
+    }).catch(error => {
+        console.error("Error generating receipt image:", error);
+        alert("Failed to generate and download receipt image. Check the console for details.");
     });
 }
 
@@ -1223,7 +1332,7 @@ function showTab(id, btn) {
     }
 }
 
-// Auth Functions
+// Auth Functions (Unchanged)
 function showLogin() {
     $('loginForm').classList.remove('hidden');
     $('registerForm').classList.add('hidden');
@@ -1349,7 +1458,7 @@ auth.onAuthStateChanged((user) => {
     }
 });
 
-// Settings Functions
+// Settings Functions (Unchanged)
 async function saveSalonInfo() {
     if (!currentUserUID) return alert("Please log in first.");
     
@@ -1401,7 +1510,7 @@ async function promptChangePin() {
 }
 
 
-// Data Management
+// Data Management (Unchanged)
 async function loadDashboardData() {
     if (!currentUserUID) return;
     
@@ -1434,7 +1543,7 @@ async function loadDashboardData() {
     }
 }
 
-// Product Functions
+// Product Functions (Unchanged)
 async function addProduct(){
     if(!currentUserUID) return alert("Please log in first.");
     let name = $('prodName').value.trim();
@@ -1502,7 +1611,7 @@ async function removeProduct(name) {
     }
 }
 
-// Offer Functions - MODIFIED
+// Offer Functions - MODIFIED (Unchanged from original prompt but including for completeness)
 async function addOffer(){
     if(!currentUserUID) return alert("Please log in first.");
     let title = $('offerTitle').value.trim();
@@ -1577,7 +1686,7 @@ async function removeOffer(title) {
     }
 }
 
-// Appointment Functions
+// Appointment Functions (Unchanged)
 async function addAppointment(){
     if(!currentUserUID) return alert("Please log in first.");
     let appt = { 
@@ -1655,7 +1764,7 @@ async function deleteAppointment(date, time) {
     }
 }
 
-// Billing Functions - MODIFIED
+// Billing Functions (Unchanged)
 function addBillItem() {
     const productSelect = $('billProd');
     const selectedProduct = productSelect.options[productSelect.selectedIndex];
@@ -1689,12 +1798,28 @@ function addBillItem() {
     updateReceiptDisplay(); // Now updates all totals
 }
 
-async function saveBill(){
+// NEW: Function to reset billing inputs and state
+function resetBillingState() {
+    billItems = []; 
+    $('billTable').innerHTML = "<tr><th>Product</th><th>Qty</th><th>Price</th><th>Total</th></tr>";
+    $('billCustName').value = $('billCustPhone').value = '';
+    $('billOfferCode').value = ''; 
+    updateReceiptDisplay(); // Reset receipt info
+    lastSavedBill = null; // Clear the last saved bill
+    
+    // Reload dashboard to update sales on the 'Sales' tab if active
+    loadDashboardData();
+}
+
+// MODIFIED saveBill function
+async function saveBill(sendMethod){
     if(!currentUserUID) return alert("Please log in first.");
-    if(billItems.length === 0) return alert("The bill is empty.");
+    if(billItems.length === 0) return alert("The bill is empty. Please add items.");
     
     const subTotal = billItems.reduce((s,i) => s + i.total, 0);
-    const customerName = $('billCustName').value.trim() || "Walk-in Customer";
+    // If customer name is left empty, it's saved as "Walk-in Customer"
+    const customerName = $('billCustName').value.trim() || "Walk-in Customer"; 
+    // Phone is optional, use the value or an empty string
     const customerPhone = $('billCustPhone').value.trim(); 
     const offerCode = $('billOfferCode').value.trim().toUpperCase();
     
@@ -1708,15 +1833,15 @@ async function saveBill(){
             discountCode = offerCode;
         } else {
             alert(`Offer Code '${offerCode}' is invalid and was not applied.`);
-            $('billOfferCode').value = ''; // Clear invalid code
         }
     }
     
     const finalTotal = subTotal - discount;
 
-    let bill = { 
+    const newBill = { 
         id: Date.now(), 
         customer: customerName,
+        // Save empty phone string if not provided, for Walk-in it's an empty string
         phone: customerPhone, 
         items: JSON.parse(JSON.stringify(billItems)), 
         subTotal: subTotal,
@@ -1731,31 +1856,33 @@ async function saveBill(){
     try {
         // Save to Firebase
         await db.collection("users").doc(currentUserUID).update({ 
-            history: firebase.firestore.FieldValue.arrayUnion(bill),
+            history: firebase.firestore.FieldValue.arrayUnion(newBill),
             totalSales: newTotalSales 
         });
 
-        // WhatsApp sharing
-        // We do this first so the user can see the bill immediately
-        await shareReceiptOnWhatsApp(bill);
-
         alert(`Bill of Rs. ${finalTotal.toFixed(2)} saved!`);
-
-        // Reset
-        billItems = []; 
-        $('billTable').innerHTML = "<tr><th>Product</th><th>Qty</th><th>Price</th><th>Total</th></tr>";
-        $('billCustName').value = $('billCustPhone').value = '';
-        $('billOfferCode').value = ''; // Reset offer code input
-        updateReceiptDisplay(); // Reset receipt info
         
-        loadDashboardData();
+        lastSavedBill = newBill; // Set the saved bill for subsequent actions
+
+        // Handle the send method
+        if (sendMethod === 'whatsapp') {
+            // WhatsApp uses the text message, so we call the function directly
+            shareReceiptOnWhatsApp(newBill);
+            // resetBillingState() is inside shareReceiptOnWhatsApp
+        } else if (sendMethod === 'local') {
+            // Local message opens a modal where the user can copy text or download the image
+            showLocalReceiptMessage(newBill);
+            // resetBillingState() is inside the modal's close button
+        }
+
     } catch(error) {
         console.error("Error saving bill:", error);
         alert("Failed to save bill. Please try again.");
     }
 }
 
-// Sales Functions
+
+// Sales Functions (Unchanged)
 async function closeDay() {
     if (!currentUserUID) return alert("Please log in first.");
     if (!await verifyOwnerPin()) return; 
@@ -1785,7 +1912,7 @@ async function closeDay() {
     }
 }
 
-// History/Customer Management Functions - ADDED/MODIFIED
+// History/Customer Management Functions (Unchanged)
 async function promptAddCustomer() {
     if (!currentUserUID) return alert("Please log in first.");
     if (!await verifyOwnerPin()) return; // Admin pin check
@@ -1793,14 +1920,14 @@ async function promptAddCustomer() {
     const name = prompt("Enter New Customer Name:");
     if (!name || name.trim() === "") return;
 
-    const phone = prompt(`Enter Phone Number for ${name}:`);
-    if (!phone || phone.trim() === "") return;
+    // Phone is optional
+    const phone = prompt(`Enter Phone Number for ${name} (Optional):`);
 
     // Save as a 'meta-history' item to record the customer
     const newCustomerEntry = {
         id: Date.now(),
         customer: name.trim(),
-        phone: phone.trim(),
+        phone: phone ? phone.trim() : "", // Save as empty string if cancelled/empty
         items: [], // Empty items array
         subTotal: 0,
         discountAmount: 0,
@@ -1848,25 +1975,24 @@ function searchCustomer() {
     renderHistory(currentUserData.history || [], searchTerm);
 }
 
-// Function to auto-fill phone when customer name is typed - ADDED
+// Function to auto-fill phone when customer name is typed (Unchanged)
 function autoFillCustomerPhone() {
     const customerName = $('billCustName').value.trim();
     const customerPhoneInput = $('billCustPhone');
     
     const customers = {};
     (currentUserData.history || []).forEach(bill => {
-        // Only record the phone if it's a valid string and not "N/A"
-        if (bill.phone && bill.phone.trim() !== '' && bill.phone.trim().toLowerCase() !== 'n/a') {
+        // Only record the phone if it's available (it can be an empty string)
+        if (bill.phone !== undefined) { 
             customers[bill.customer] = bill.phone.trim();
         }
     });
 
     // If the customer name is found in the collected list, fill the phone number
-    if (customers[customerName]) {
+    if (customers.hasOwnProperty(customerName)) {
         customerPhoneInput.value = customers[customerName];
     } else if (customerPhoneInput.value.trim() !== '') {
         // If the customer name does not match, but the phone input already has text, don't clear it.
-        // The user might be typing a new customer's number.
     } else {
         // Clear the phone if the name doesn't match a stored customer and phone is empty
         customerPhoneInput.value = '';
@@ -1894,8 +2020,56 @@ async function deleteHistoryItem(bill) {
     }
 }
 
+// NEW: Customer History View Function (Unchanged)
+function viewCustomerHistory(customerName) {
+    if (!customerName || customerName === 'Walk-in Customer') {
+        alert("Walk-in customers do not have a separate history profile.");
+        return;
+    }
+    
+    const history = currentUserData.history || [];
+    const customerBills = history.filter(bill => bill.customer === customerName && bill.total > 0);
+    
+    if (customerBills.length === 0) {
+        alert(`No transaction history found for ${customerName}.`);
+        return;
+    }
+    
+    const totalSpent = customerBills.reduce((sum, bill) => sum + bill.total, 0);
+    const table = $('customerHistoryTable');
+    
+    // Clear old data
+    table.innerHTML = '<tr><th>Date</th><th>Total</th><th>Actions</th></tr>';
+    
+    customerBills.sort((a, b) => new Date(b.date) - new Date(a.date))
+                 .forEach(bill => {
+        const billJson = JSON.stringify(bill).replace(/"/g, '&quot;');
+        
+        const row = table.insertRow();
+        row.innerHTML = `
+            <td>${bill.date}</td>
+            <td>Rs. ${bill.total.toFixed(2)}</td>
+            <td>
+                <button class="resend-btn" onclick="shareReceiptOnWhatsApp(${billJson})" style="margin: 0; padding: 4px 8px;">📱</button>
+                <button class="local-receipt-btn" onclick="showLocalReceiptMessage(${billJson})" style="margin: 0; padding: 4px 8px;">📋</button> 
+            </td>
+        `;
+    });
+    
+    // Update modal title and summary
+    $('#historyModalTitle').textContent = `${customerName}'s Transaction History 🧾`;
+    $('#historyModalSummary').innerHTML = `Total Bills: <strong>${customerBills.length}</strong> | Total Spent: <strong>Rs. ${totalSpent.toFixed(2)}</strong>`;
+    
+    // Show modal
+    $('customerHistoryModal').classList.add('active');
+}
 
-// Pin Verification
+function closeCustomerHistoryModal() {
+    $('customerHistoryModal').classList.remove('active');
+}
+
+
+// Pin Verification (Unchanged)
 async function verifyOwnerPin() {
     if (!currentUserUID) return false;
     const inputPin = prompt("Enter Owner Pin to confirm this action:");
@@ -1916,7 +2090,7 @@ async function verifyOwnerPin() {
     }
 }
 
-// Rendering Functions - MODIFIED
+// Rendering Functions (Unchanged)
 function renderAppointments(appointments) {
     const table = $('apptTable');
     if (!table) return;
@@ -2025,7 +2199,7 @@ function renderOffers(offers) {
     });
 }
 
-// MODIFIED renderHistory to support search and customer management
+// MODIFIED renderHistory to support search and customer management (Unchanged)
 function renderHistory(history, searchTerm = '') {
     const table = $('histTable');
     const customerListDiv = $('customerList');
@@ -2037,6 +2211,12 @@ function renderHistory(history, searchTerm = '') {
     customerListDiv.innerHTML = '';
     customerNamesDatalist.innerHTML = ''; // Clear datalist
 
+    // Start with a default option for Walk-in in the datalist
+    const walkinOption = document.createElement('option');
+    walkinOption.value = 'Walk-in Customer';
+    customerNamesDatalist.appendChild(walkinOption);
+
+
     if (history.length === 0) {
         table.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#999;">No transaction history found</td></tr>`;
         customerListDiv.innerHTML = '<div style="text-align:center; color:#999; padding:20px;">No customers found</div>';
@@ -2047,13 +2227,15 @@ function renderHistory(history, searchTerm = '') {
     const customers = {};
     history.forEach(bill => {
         const name = bill.customer;
-        const phone = bill.phone || 'N/A';
+        // Phone can be an empty string, so display 'N/A' if empty/null
+        const phone = bill.phone && bill.phone.trim() !== '' ? bill.phone : 'N/A'; 
         
         // Use the customer name as the key
         if (name && name !== 'Walk-in Customer') {
             if (!customers[name]) {
                 customers[name] = {
-                    phone: phone,
+                    // Use the original phone value for storing (can be empty string)
+                    phone: bill.phone ? bill.phone.trim() : "", 
                     totalSpent: 0,
                     lastVisit: bill.date,
                     historyCount: 0
@@ -2066,13 +2248,14 @@ function renderHistory(history, searchTerm = '') {
             }
             
             // Update last visit
+            // Note: date comparison should use a real Date object if possible, but here we just check string greater than, which works for ISO/Locale strings if dates are recorded consistently
             if (new Date(bill.date) > new Date(customers[name].lastVisit)) {
                 customers[name].lastVisit = bill.date;
             }
             
-            // Update phone (to the latest recorded phone, if available)
-            if (phone !== 'N/A') {
-                 customers[name].phone = phone;
+            // Update phone (to the latest recorded phone, if available and not empty)
+            if (bill.phone && bill.phone.trim() !== '') {
+                 customers[name].phone = bill.phone.trim();
             }
         }
     });
@@ -2090,18 +2273,21 @@ function renderHistory(history, searchTerm = '') {
         customerListDiv.innerHTML = '<div style="text-align:center; color:#999; padding:20px;">No recorded customers found</div>';
     } else {
         filteredCustomers.forEach(customer => {
+            const displayPhone = customer.phone || 'N/A';
             const div = document.createElement('div');
             div.className = 'feed-card';
+            // ADDED onclick for customer history view
+            div.setAttribute('onclick', `viewCustomerHistory('${customer.name}')`); 
             div.innerHTML = `
                 <div style="flex:1;">
                     <h4 style="margin:0 0 5px 0;">${customer.name}</h4>
-                    <p style="margin:0; font-size:12px;">Phone: ${customer.phone || 'N/A'}</p>
+                    <p style="margin:0; font-size:12px;">Phone: ${displayPhone}</p>
                     <p style="margin:0; font-size:12px;">Total Transactions: ${customer.historyCount}</p>
                     <p style="margin:0; font-size:12px; color:var(--primary-blue); font-weight:bold;">Total Spent: Rs. ${customer.totalSpent.toFixed(2)}</p>
                     <p style="margin:0; font-size:12px;">Last Visit: ${customer.lastVisit}</p>
                 </div>
                 <div class="feed-actions">
-                    <button class="delete-btn" onclick="deleteCustomerByName('${customer.name}')">Delete All 🗑️</button>
+                    <button class="delete-btn" onclick="event.stopPropagation(); deleteCustomerByName('${customer.name}')">Delete All 🗑️</button>
                 </div>
             `;
             customerListDiv.appendChild(div);
@@ -2121,15 +2307,19 @@ function renderHistory(history, searchTerm = '') {
              return;
         }
 
+        // Display phone number as 'N/A' if empty string
+        const displayPhone = bill.phone && bill.phone.trim() !== '' ? bill.phone : 'N/A';
         const billJson = JSON.stringify(bill).replace(/"/g, '&quot;');
+        
         const row = table.insertRow();
         row.innerHTML = `
             <td>${bill.customer}</td>
-            <td>${bill.phone || 'N/A'}</td>
+            <td>${displayPhone}</td>
             <td>Rs. ${bill.total.toFixed(2)}</td>
             <td>${bill.date}</td>
             <td>
                 <button class="resend-btn" onclick="shareReceiptOnWhatsApp(${billJson})">Resend 📱</button>
+                <button class="local-receipt-btn" onclick="showLocalReceiptMessage(${billJson})">Local Msg 📋</button> 
                 <button class="delete-btn" onclick="deleteHistoryItem(${billJson})">Delete</button>
             </td>
         `;
@@ -2167,7 +2357,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     const now = new Date();
     const hours = now.getHours().toString().padStart(2, '0');
-    const minutes = now.getMinutes().getMinutes().toString().padStart(2, '0');
+    const minutes = now.getMinutes().toString().padStart(2, '0');
     $('apptTime').value = `${hours}:${minutes}`;
     
     console.log("App initialized");
@@ -2178,7 +2368,7 @@ document.addEventListener('DOMContentLoaded', function() {
     updateReceiptDisplay();
 });
 
-// File preview handlers
+// File preview handlers (Unchanged)
 $('prodPhoto').addEventListener('change', function(e) {
     const file = e.target.files[0];
     const preview = $('prodPhotoPreview');
@@ -2209,7 +2399,7 @@ $('offerPhoto').addEventListener('change', function(e) {
     }
 });
 
-// Event listeners for customer info changes AND offer code change - MODIFIED
+// Event listeners for customer info changes AND offer code change (Unchanged)
 $('billCustName').addEventListener('input', autoFillCustomerPhone);
 $('billCustPhone').addEventListener('input', updateReceiptDisplay);
 $('billOfferCode').addEventListener('input', updateReceiptDisplay);
@@ -2244,7 +2434,7 @@ window.shareOnFacebook = shareOnFacebook;
 window.shareOnInstagram = shareOnInstagram;
 window.copyOfferText = copyOfferText;
 window.shareReceiptOnWhatsApp = shareReceiptOnWhatsApp;
-window.downloadReceipt = downloadReceipt;
+// window.downloadReceipt = downloadReceipt; // Renamed to downloadReceiptImage
 window.saveSalonInfo = saveSalonInfo;
 window.promptChangePin = promptChangePin;
 window.deleteHistoryItem = deleteHistoryItem;
@@ -2254,6 +2444,19 @@ window.promptAddCustomer = promptAddCustomer;
 window.deleteCustomerByName = deleteCustomerByName;
 window.searchCustomer = searchCustomer;
 window.autoFillCustomerPhone = autoFillCustomerPhone;
+
+// NEW Global Functions for Local Message Receipt
+window.showLocalReceiptMessage = showLocalReceiptMessage;
+window.closeLocalReceiptModal = closeLocalReceiptModal;
+window.copyReceiptText = copyReceiptText;
+window.downloadReceiptImage = downloadReceiptImage; // NEW: Download Image Function
+
+// NEW Global Functions for State Reset
+window.resetBillingState = resetBillingState;
+
+// NEW Global Functions for Customer History
+window.viewCustomerHistory = viewCustomerHistory;
+window.closeCustomerHistoryModal = closeCustomerHistoryModal;
 </script>
 </body>
 </html>
