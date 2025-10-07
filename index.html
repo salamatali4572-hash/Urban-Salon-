@@ -433,6 +433,27 @@ th {
     flex: 1;
     padding: 10px;
 }
+
+/* Offline Status Indicator */
+#onlineStatus {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    padding: 8px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: bold;
+    z-index: 1001;
+    transition: all 0.3s ease;
+}
+#onlineStatus.online {
+    background: var(--success-green);
+    color: white;
+}
+#onlineStatus.offline {
+    background: var(--danger-red);
+    color: white;
+}
 </style>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.4/firebase-app-compat.js"></script>
@@ -452,6 +473,9 @@ th {
     Powered by Ali (03091539086) &copy;2025
   </div>
 </header>
+
+<!-- Offline Status Indicator -->
+<div id="onlineStatus" class="online">🟢 Online</div>
 
 <nav id="mainNav" class="hidden">
   <button onclick="showTab('appointments', this)">Appointments</button>
@@ -723,6 +747,16 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
+// Enable offline persistence for Firestore
+db.enablePersistence()
+  .catch((err) => {
+    if (err.code == 'failed-precondition') {
+      console.log('Persistence failed: Multiple tabs open');
+    } else if (err.code == 'unimplemented') {
+      console.log('Persistence not available');
+    }
+  });
+
 // Global variables
 let currentUserUID = null;
 let currentUserData = {};
@@ -743,6 +777,26 @@ let navEl;
 const now = new Date();
 $('pdfMonth').value = now.getMonth();
 $('pdfYear').value = now.getFullYear();
+
+// Offline Status Management
+function updateOnlineStatus() {
+    const statusEl = $('onlineStatus');
+    if (navigator.onLine) {
+        statusEl.textContent = '🟢 Online - Syncing...';
+        statusEl.className = 'online';
+        // Trigger a manual sync when going online
+        if (currentUserUID) {
+            setTimeout(() => loadDashboardData(), 1000); // Delay to allow connection
+        }
+    } else {
+        statusEl.textContent = '🔴 Offline Mode';
+        statusEl.className = 'offline';
+    }
+}
+
+// Listen for online/offline events
+window.addEventListener('online', updateOnlineStatus);
+window.addEventListener('offline', updateOnlineStatus);
 
 // Utility Functions
 function fileToBase64(file) {
@@ -1539,7 +1593,17 @@ async function loadDashboardData() {
         }
     } catch(e) {
         console.error("Error loading dashboard data:", e);
-        alert("Failed to load data: " + e.message);
+        // In offline mode, use cached data if available
+        if (e.code === 'unavailable' || !navigator.onLine) {
+            console.log("Using cached data (offline mode)");
+            // currentUserData remains as is (from cache)
+            navEl.classList.remove('hidden'); 
+            $('auth').classList.remove('active');
+            const activeNavButton = document.querySelector(`#mainNav button[onclick*="${activeTabID}"]`);
+            showTab(activeTabID, activeNavButton);
+        } else {
+            alert("Failed to load data: " + e.message);
+        }
     }
 }
 
@@ -1581,7 +1645,13 @@ async function addProduct(){
         loadDashboardData();
     } catch(error) {
         console.error("Error adding product:", error);
-        alert("Failed to add product. Please try again.");
+        // In offline mode, queue the action (Firestore persistence handles it)
+        if (error.code === 'unavailable' || !navigator.onLine) {
+            alert("Added locally. Will sync when online.");
+            loadDashboardData(); // Reload to reflect local change
+        } else {
+            alert("Failed to add product. Please try again.");
+        }
     }
 }
 
@@ -1606,7 +1676,12 @@ async function removeProduct(name) {
             loadDashboardData();
         } catch(error) {
             console.error("Error removing product:", error);
-            alert("Failed to remove product. Please try again.");
+            if (error.code === 'unavailable' || !navigator.onLine) {
+                alert("Removed locally. Will sync when online.");
+                loadDashboardData(); // Reload to reflect local change
+            } else {
+                alert("Failed to remove product. Please try again.");
+            }
         }
     }
 }
@@ -1656,7 +1731,12 @@ async function addOffer(){
         loadDashboardData();
     } catch(error) {
         console.error("Error adding offer:", error);
-        alert("Failed to add offer. Please try again.");
+        if (error.code === 'unavailable' || !navigator.onLine) {
+            alert("Offer added locally. Will sync when online.");
+            loadDashboardData(); // Reload to reflect local change
+        } else {
+            alert("Failed to add offer. Please try again.");
+        }
     }
 }
 
@@ -1681,7 +1761,12 @@ async function removeOffer(title) {
             loadDashboardData();
         } catch(error) {
             console.error("Error removing offer:", error);
-            alert("Failed to remove offer. Please try again.");
+            if (error.code === 'unavailable' || !navigator.onLine) {
+                alert("Offer removed locally. Will sync when online.");
+                loadDashboardData(); // Reload to reflect local change
+            } else {
+                alert("Failed to remove offer. Please try again.");
+            }
         }
     }
 }
@@ -1708,7 +1793,12 @@ async function addAppointment(){
         loadDashboardData();
     } catch(error) {
         console.error("Error adding appointment:", error);
-        alert("Failed to add appointment. Please try again.");
+        if (error.code === 'unavailable' || !navigator.onLine) {
+            alert("Appointment added locally. Will sync when online.");
+            loadDashboardData(); // Reload to reflect local change
+        } else {
+            alert("Failed to add appointment. Please try again.");
+        }
     }
 }
 
@@ -1741,7 +1831,12 @@ async function manageAppointment(date, time, newStatus) {
         loadDashboardData();
     } catch(error) {
         console.error("Error updating appointment:", error);
-        alert("Failed to update appointment. Please try again.");
+        if (error.code === 'unavailable' || !navigator.onLine) {
+            alert("Appointment updated locally. Will sync when online.");
+            loadDashboardData(); // Reload to reflect local change
+        } else {
+            alert("Failed to update appointment. Please try again.");
+        }
     }
 }
 
@@ -1759,7 +1854,12 @@ async function deleteAppointment(date, time) {
             loadDashboardData();
         } catch(error) {
             console.error("Error deleting appointment:", error);
-            alert("Failed to delete appointment. Please try again.");
+            if (error.code === 'unavailable' || !navigator.onLine) {
+                alert("Appointment deleted locally. Will sync when online.");
+                loadDashboardData(); // Reload to reflect local change
+            } else {
+                alert("Failed to delete appointment. Please try again.");
+            }
         }
     }
 }
@@ -1877,7 +1977,19 @@ async function saveBill(sendMethod){
 
     } catch(error) {
         console.error("Error saving bill:", error);
-        alert("Failed to save bill. Please try again.");
+        if (error.code === 'unavailable' || !navigator.onLine) {
+            alert(`Bill saved locally (Rs. ${finalTotal.toFixed(2)}). Will sync when online.`);
+            lastSavedBill = newBill; // Still set for local actions
+
+            // Handle the send method even offline
+            if (sendMethod === 'whatsapp') {
+                shareReceiptOnWhatsApp(newBill);
+            } else if (sendMethod === 'local') {
+                showLocalReceiptMessage(newBill);
+            }
+        } else {
+            alert("Failed to save bill. Please try again.");
+        }
     }
 }
 
@@ -1908,7 +2020,12 @@ async function closeDay() {
         loadDashboardData();
     } catch(error) {
         console.error("Error closing day:", error);
-        alert("Failed to close day. Please try again.");
+        if (error.code === 'unavailable' || !navigator.onLine) {
+            alert("Day closed locally. Will sync when online.");
+            loadDashboardData(); // Reload to reflect local change
+        } else {
+            alert("Failed to close day. Please try again.");
+        }
     }
 }
 
@@ -1944,7 +2061,12 @@ async function promptAddCustomer() {
         loadDashboardData();
     } catch(error) {
         console.error("Error adding customer:", error);
-        alert("Failed to add customer. Please try again.");
+        if (error.code === 'unavailable' || !navigator.onLine) {
+            alert(`Customer ${name} added locally. Will sync when online.`);
+            loadDashboardData(); // Reload to reflect local change
+        } else {
+            alert("Failed to add customer. Please try again.");
+        }
     }
 }
 
@@ -1965,7 +2087,12 @@ async function deleteCustomerByName(name) {
             loadDashboardData();
         } catch (error) {
             console.error("Error deleting customer records:", error);
-            alert("Failed to delete customer records. Please try again.");
+            if (error.code === 'unavailable' || !navigator.onLine) {
+                alert(`Customer records deleted locally. Will sync when online.`);
+                loadDashboardData(); // Reload to reflect local change
+            } else {
+                alert("Failed to delete customer records. Please try again.");
+            }
         }
     }
 }
@@ -2015,7 +2142,12 @@ async function deleteHistoryItem(bill) {
             loadDashboardData();
         } catch(error) {
             console.error("Error deleting transaction:", error);
-            alert("Failed to delete transaction. Please try again.");
+            if (error.code === 'unavailable' || !navigator.onLine) {
+                alert("Transaction deleted locally. Will sync when online.");
+                loadDashboardData(); // Reload to reflect local change
+            } else {
+                alert("Failed to delete transaction. Please try again.");
+            }
         }
     }
 }
@@ -2085,6 +2217,11 @@ async function verifyOwnerPin() {
         }
     } catch(error) {
         console.error("Error verifying pin:", error);
+        if (error.code === 'unavailable' || !navigator.onLine) {
+            // In offline mode, assume verification fails to prevent actions
+            alert("Cannot verify pin offline. Please connect to internet.");
+            return false;
+        }
         alert("Error verifying pin. Please try again.");
         return false;
     }
@@ -2366,6 +2503,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Initial receipt update
     updateReceiptDisplay();
+
+    // Initial online status check
+    updateOnlineStatus();
 });
 
 // File preview handlers (Unchanged)
